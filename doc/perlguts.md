@@ -1,0 +1,1188 @@
+# 描述
+
+=head1 DESCRIPTION
+
+This document attempts to describe how to use the Perl API, as well as
+to provide some info on the basic workings of the Perl core. It is far
+from complete and probably contains many errors. Please refer any
+questions or comments to the author below.
+
+本文档试图描述如何使用Perl API，同时提供一些Perl核心基本功能的信息。本文档仍未完成且可能包含很多错误。如有问题或注释请向下面列出的作者提出。
+
+#变量
+
+=head1 Variables
+
+##类型
+
+=head2 Datatypes
+
+Perl has three typedefs that handle Perl's three main data types:
+
+Perl有三种typedef定义，用于处理Perl的三种主要数据类型。
+
+* SV Scalar Value
+* AV Array Value
+* HV Hash Value
+
+Each typedef has specific routines that manipulate the various data types.
+
+每种类型都有相应的数据管理方式。
+
+##什么是"IV"?
+
+=head2 What is an "IV"?
+
+Perl uses a special typedef IV which is a simple signed integer type that is
+guaranteed to be large enough to hold a pointer (as well as an integer).
+Additionally, there is the UV, which is simply an unsigned IV.
+
+Perl使用'IV'(typedef一个有符号整型，空间足以保存一个指针)。另外还有一个typedef:'UV'(一个无符号的'IV')。
+
+Perl also uses two special typedefs, I32 and I16, which will always be at
+least 32-bits and 16-bits long, respectively. (Again, there are U32 and U16,
+as well.)  They will usually be exactly 32 and 16 bits long, but on Crays
+they will both be 64 bits.
+
+Perl同样适用I32和I16两个typedef，通常至少有32位或16位长(同样也有U32和U64)。但是在Crays上，它们都是64位。
+
+##使用SV
+
+=head2 Working with SVs
+
+An SV can be created and loaded with one command.  There are five types of
+values that can be loaded: an integer value (IV), an unsigned integer
+value (UV), a double (NV), a string (PV), and another scalar (SV).
+("PV" stands for "Pointer Value".  You might think that it is misnamed
+because it is described as pointing only to strings.  However, it is
+possible to have it point to other things.  For example, inversion
+lists, used in regular expression data structures, are scalars, each
+consisting of an array of UVs which are accessed through PVs.  But,
+using it for non-strings requires care, as the underlying assumption of
+much of the internals is that PVs are just for strings.  Often, for
+example, a trailing NUL is tacked on automatically.  The non-string use
+is documented only in this paragraph.)
+
+一个SV可以用一条指令创建和加载。有五种类型的值可以被加载：整型值(IV)，无符号整型值(UV)，double(NV)，
+字符串(PV)以及另一个scalar(SV)。("PV"代表"指针值",你也许认为这样的名字有误导性因为它被描述为一个指向字符串的指针。
+然而它实际上可以指向其它类型的数据。例如，反向列表被用于正则表达式的数据结构中，就是scalars，每一个成员都包含一个通过PV访问的UV数组。
+但是将PV用于字符串之外的地方需要特别小心，因为很多内部的封装都假设PV是用于字符串的。非字符串的应用文档中只在此处提及。)
+
+The seven routines are:
+
+这七种操作如下：
+
+    SV*  newSViv(IV);
+    SV*  newSVuv(UV);
+    SV*  newSVnv(double);
+    SV*  newSVpv(const char*, STRLEN);
+    SV*  newSVpvn(const char*, STRLEN);
+    SV*  newSVpvf(const char*, ...);
+    SV*  newSVsv(SV*);
+
+C<STRLEN> is an integer type (Size_t, usually defined as size_t in
+F<config.h>) guaranteed to be large enough to represent the size of
+any string that perl can handle.
+
+STRLEN 是整型(Size_t, 通常在config.h文件中被定义为size_t)，保证足够大以容纳任何perl可以处理的字符串的长度。
+
+In the unlikely case of a SV requiring more complex initialisation, you
+can create an empty SV with newSV(len).  If C<len> is 0 an empty SV of
+type NULL is returned, else an SV of type PV is returned with len + 1 (for
+the NUL) bytes of storage allocated, accessible via SvPVX.  In both cases
+the SV has the undef value.
+
+在一些不太可能发生的场景中SV需要更加复杂的初始化方式，你可以用newSV(len)创建一个空的SV。如果len为0，一个类型为NULL的空SV将会返回，否则一个类型为PV的SV将会返回，并分配长度为len+1字节且值为NULL的内存空间，可以通过SvPVX访问。在以上两种场景中SV的值都是undef。
+
+    SV *sv = newSV(0);   /* no storage allocated  */
+    SV *sv = newSV(10);  /* 10 (+1) bytes of uninitialised storage
+                            allocated */
+To change the value of an I<already-existing> SV, there are eight routines:
+
+有八种操作用于改变（已存在的）SV的值。
+
+    void  sv_setiv(SV*, IV);
+    void  sv_setuv(SV*, UV);
+    void  sv_setnv(SV*, double);
+    void  sv_setpv(SV*, const char*);
+    void  sv_setpvn(SV*, const char*, STRLEN)
+    void  sv_setpvf(SV*, const char*, ...);
+    void  sv_vsetpvfn(SV*, const char*, STRLEN, va_list *, SV **, I32, bool *);
+    void  sv_setsv(SV*, SV*);
+
+
+Notice that you can choose to specify the length of the string to be
+assigned by using C<sv_setpvn>, C<newSVpvn>, or C<newSVpv>, or you may
+allow Perl to calculate the length by using C<sv_setpv> or by specifying
+0 as the second argument to C<newSVpv>.  Be warned, though, that Perl will
+determine the string's length by using C<strlen>, which depends on the
+string terminating with a NUL character, and not otherwise containing
+NULs.
+
+注意：你可以使用sv_setpvn，newSVpvn，或newSVpv制定传入字符串的长度，也可以用sv_setpv或newSVpn（第二个参数传0）让Perl自己计算字符串的长度，Perl会使用strlen来获取字符串的长度，因此你传入的字符串必须以NUL结尾，且中间不能包含NUL。
+
+The arguments of C<sv_setpvf> are processed like C<sprintf>, and the
+formatted output becomes the value.
+
+sv_setpvf参数的处理类似于sprintf，格式化后的数据将被赋予SV*。
+
+
+C<sv_vsetpvfn> is an analogue of C<vsprintf>, but it allows you to specify
+either a pointer to a variable argument list or the address and length of
+an array of SVs.  The last argument points to a boolean; on return, if that
+boolean is true, then locale-specific information has been used to format
+the string, and the string's contents are therefore untrustworthy (see
+L<perlsec>).  This pointer may be NULL if that information is not
+important.  Note that this function requires you to specify the length of
+the format.
+
+sv_vsetpvfn与vsprintf相似，但是它允许你指定一个指向参数列表的指针或者一个SV数组的地址和它的长度。最后一个参数是指向一个boolean的地址；返回后，如果boolean为true，则本地化的信息将被用于格式化字符串。因此该字符串的内容是不可信的（参见perlsec）。如果该信息不重要的话这个指针的值可以为NUL。注意该函数要求你提供格式的长度。
+
+The C<sv_set*()> functions are not generic enough to operate on values
+that have "magic".  See L<Magic Virtual Tables> later in this document.
+
+sc_set*系列函数在操作“有魔力的”值的时候并不通用。参见本文中Magic Vitrual Table一节。
+
+All SVs that contain strings should be terminated with a NUL character.
+If it is not NUL-terminated there is a risk of
+core dumps and corruptions from code which passes the string to C
+functions or system calls which expect a NUL-terminated string.
+Perl's own functions typically add a trailing NUL for this reason.
+Nevertheless, you should be very careful when you pass a string stored
+in an SV to a C function or system call.
+
+所有包含字符串的SVs都应当以NUL结尾。如果不这样的话将会有将非NUL结尾字符串传入需要通过NUL判断字符串结束的C函数或系统调用从而导致进程崩溃从而核心转储的风险。Perl自己的函数一般都会因此添加一个尾部的NUL。当你将一个存在SV中的字符串传入C函数或系统调用的时候一定要万分小心。
+
+To access the actual value that an SV points to, you can use the macros:
+
+为得到SV指向的真实值，你可以用以下宏：
+
+    SvIV(SV*)
+    SvUV(SV*)
+    SvNV(SV*)
+    SvPV(SV*, STRLEN len)
+    SvPV_nolen(SV*)
+
+which will automatically coerce the actual scalar type into an IV, UV, double,
+or string.
+
+它们将把scalar类型自动转为IV，UV，double或字符串。
+
+In the C<SvPV> macro, the length of the string returned is placed into the
+variable C<len> (this is a macro, so you do I<not> use C<&len>).  If you do
+not care what the length of the data is, use the C<SvPV_nolen> macro.
+Historically the C<SvPV> macro with the global variable C<PL_na> has been
+used in this case.  But that can be quite inefficient because C<PL_na> must
+be accessed in thread-local storage in threaded Perl.  In any case, rememberthat Perl allows arbitrary strings of data that may both contain NULs and might not be terminated by a NUL.
+
+对于SvPV这个宏，返回字符串的长度将被存放于变量len中（这是一个宏，应此你不需要使用len的地址）。如果你不介意数据的长度，使用宏SvPV_nolen，历史上，SvPV宏结合PL_na全局变量被使用在该场景下。但是这样非常低效，因为PL_na的位置位于支持多线程的Perl中的线程专属内存中。请记住，在任何场景下Perl之支持包含NUL或不以NUL结尾的字符串。
+
+Also remember that C doesn't allow you to safely say C<foo(SvPV(s, len),
+len);>. It might work with your compiler, but it won't work for everyone.
+Break this sort of statement up into separate assignments:
+
+同时请记住C语言不允许你安全得使用foo(SvPV(s.len),len)。这样的用法可能对于你的编译器啃一正常编译，但不保证对所有人都适用。请将这种类型的语句拆分成多条赋值语句。
+
+    SV *s;
+    STRLEN len;
+    char *ptr;
+    ptr = SvPV(s, len);
+    foo(ptr, len);
+
+If you want to know if the scalar value is TRUE, you can use:
+
+如果你想知道某个scalar值是否为TRUE，你可以使用：
+
+    SvTRUE(SV*)
+
+Although Perl will automatically grow strings for you, if you need to force
+Perl to allocate more memory for your SV, you can use the macro
+
+尽管Perl将会自动为你的字符串分配内存，但是如果你需要强制为SV分配更多的内存的话，使用宏：
+
+    SvGROW(SV*, STRLEN newlen)
+
+which will determine if more memory needs to be allocated.  If so, it will
+call the function C<sv_grow>.  Note that C<SvGROW> can only increase, not
+decrease, the allocated memory of an SV and that it does not automatically
+add space for the trailing NUL byte (perl's own string functions typically do C<SvGROW(sv, len + 1)>).
+
+这将会检测是否需要分配更多的内存，如果是，它将会调用函数sv_grow。请注意SvGROW只会增加内存，且分配的内存不会自动在末尾添加NUL字节（perl内部一般都使用 SvGROW(sv, len + 1)）。
+
+If you have an SV and want to know what kind of data Perl thinks is stored
+in it, you can use the following macros to check the type of SV you have.
+
+如果你想知道Perl认为一个SV中存储数据的的类型，可以使用如下的宏进行检查。
+
+    SvIOK(SV*)
+    SvNOK(SV*)
+    SvPOK(SV*)
+
+You can get and set the current length of the string stored in an SV with
+the following macros:
+
+你可以使用以下宏获取当前存储在SV中的字符串的长度。
+
+    SvCUR(SV*)
+    SvCUR_set(SV*, I32 val)
+
+You can also get a pointer to the end of the string stored in the SV
+with the macro:
+
+你同样可以使用以下宏获取指向SV中字符串末尾的指针。
+
+    SvEND(SV*)
+
+But note that these last three macros are valid only if C<SvPOK()> is true.
+
+但是请注意最后三个宏只有在SvPOK返回真的时候才能合法使用。
+
+If you want to append something to the end of string stored in an C<SV*>,
+you can use the following functions:
+
+如果你希望在SV*中储存的字符串后面添加数据，可以使用如下函数：
+
+    void  sv_catpv(SV*, const char*);
+    void  sv_catpvn(SV*, const char*, STRLEN);
+    void  sv_catpvf(SV*, const char*, ...);
+    void  sv_vcatpvfn(SV*, const char*, STRLEN, va_list *, SV **,
+                                                             I32, bool);
+    void  sv_catsv(SV*, SV*);
+
+The first function calculates the length of the string to be appended by
+using C<strlen>.  In the second, you specify the length of the string
+yourself.  The third function processes its arguments like C<sprintf> and
+appends the formatted output.  The fourth function works like C<vsprintf>.
+You can specify the address and length of an array of SVs instead of the
+va_list argument. The fifth function extends the string stored in the first
+SV with the string stored in the second SV.  It also forces the second SV
+to be interpreted as a string.
+
+第一个函数使用strlen计算需要添加的字符串长度。第二个函数需要你自己制定字符串长度。第三个函数以类似于sprintf的方式格式化字符串并将结果添加到末尾。第四个函数类似于vsprintf，你可以指定一个SV数组的地址和长度以取代va_list参数。第五个函数用第二个SV*中的字符串拓展第一个参数。当然它会将第二个参数解析为字符串类型。
+
+The C<sv_cat*()> functions are not generic enough to operate on values that
+have "magic".  See L<Magic Virtual Tables> later in this document.
+
+sv_cat*()系列的函数对于有"魔法的"值来说并不通用。请看下面的Magic Virtual Tables章节。
+
+If you know the name of a scalar variable, you can get a pointer to its SV
+by using the following:
+
+如果你知道scalar变量的名字，你可以用以下这种方式获取到一个指向SV的指针。
+
+    SV*  get_sv("package::varname", 0);
+
+This returns NULL if the variable does not exist.
+
+如果变量不存在的话将会返回NULL。
+
+If you want to know if this variable (or any other SV) is actually C<defined>,
+you can call:
+
+如果你想知道某个变量是否被定义，你可以调用：
+
+    SvOK(SV*)
+
+The scalar C<undef> value is stored in an SV instance called C<PL_sv_undef>.
+
+scalar值undef存在一个名字叫PL_sv_undef的SV实例中。
+
+Its address can be used whenever an C<SV*> is needed. Make sure that
+you don't try to compare a random sv with C<&PL_sv_undef>. For example
+when interfacing Perl code, it'll work correctly for:
+
+它的地址可以被用于任何一个以SV*为参数的地方。确保你不会用一个SV与&PL_sv_undef进行比较。例如当与Perl代码交互的时候，如下方可以正常工作：
+
+  foo(undef);
+
+But won't work when called as:
+
+但是这样调用就无法工作了：
+
+  $x = undef;
+  foo($x);
+
+So to repeat always use SvOK() to check whether an sv is defined.
+
+所以请用SvOK()来检查sv是否被定义。
+
+Also you have to be careful when using C<&PL_sv_undef> as a value in
+AVs or HVs (see L<AVs, HVs and undefined values>).
+
+同样当时使用&PL_sv_undef作为AVs或HVs的值的时候千万要小心（看AVs，HVs和undefined值那一章节）。
+
+There are also the two values C<PL_sv_yes> and C<PL_sv_no>, which contain
+boolean TRUE and FALSE values, respectively.  Like C<PL_sv_undef>, their
+addresses can be used whenever an C<SV*> is needed.
+
+同样PL_sv_yes和PL_sv_no是两个包含了布尔值TRUE和FALSE的值。和PL_sv_undef一样，它们的地址同样可以被用于任何期望SV*的地方。
+
+Do not be fooled into thinking that C<(SV *) 0> is the same as C<&PL_sv_undef>.
+Take this code:
+
+不要认为(SV *)0和&PL_sv_undef是一样的，请看以下代码：
+
+    SV* sv = (SV*) 0;
+    if (I-am-to-return-a-real-value) {
+            sv = sv_2mortal(newSViv(42));
+    }
+    sv_setsv(ST(0), sv);
+
+This code tries to return a new SV (which contains the value 42) if it should
+return a real value, or undef otherwise.  Instead it has returned a NULL
+pointer which, somewhere down the line, will cause a segmentation violation,
+bus error, or just weird results.  Change the zero to C<&PL_sv_undef> in the
+first line and all will be well.
+
+这段代码在应当返回实数的时候返回42，否则返回undef。但是它实际上返回的是一个NULL指针，
+将会导致内存段冲突或错误或一些奇怪的情况。将第一行中的0修改为&PL_sv_undef会解决这个问题。
+
+To free an SV that you've created, call C<SvREFCNT_dec(SV*)>.  Normally this
+call is not necessary (see L<Reference Counts and Mortality>).
+
+为了释放一个你创建的SV，调用SvREFCNT_dec(SV*)。通常你不需要调用这个方法（请看引用计数与销毁）。
+
+## 偏移
+
+=head2 Offsets
+
+Perl provides the function C<sv_chop> to efficiently remove characters
+from the beginning of a string; you give it an SV and a pointer to
+somewhere inside the PV, and it discards everything before the
+pointer. The efficiency comes by means of a little hack: instead of
+actually removing the characters, C<sv_chop> sets the flag C<OOK>
+(offset OK) to signal to other functions that the offset hack is in
+effect, and it puts the number of bytes chopped off into the IV field
+of the SV. It then moves the PV pointer (called C<SvPVX>) forward that
+many bytes, and adjusts C<SvCUR> and C<SvLEN>.
+
+Perl提供了函数sv_chop用于高效地移除字符串开头的字符；你传入一个SV和一个指向PV某处地址的指针，它将会移除指针前的全部字符。
+它的效率源于一点hack技巧：它实际上并没有真正移除掉这些字符，sc_chop设置了OOK(offset OK)字段用于向其他函数表明使用了这种偏移的hack技巧，
+同时它将被移除的字符的个数存入到SV中的IV字段。然后它将PV指针（称作SvPVX）向前移动那么多字节，并适配SvCUR和SvLEN。
+
+Hence, at this point, the start of the buffer that we allocated lives
+at C<SvPVX(sv) - SvIV(sv)> in memory and the PV pointer is pointing
+into the middle of this allocated storage.
+
+因此在这一点上，我们分配的缓冲区的起始点位于内存中的SvPVX(sv) - SvIV(sv)，而PV指针指向分配的内存中间的区域。
+
+This is best demonstrated by example:
+
+用下面这个例子可以很好地说明：
+
+  % ./perl -Ilib -MDevel::Peek -le '$a="12345"; $a=~s/.//; Dump($a)'
+  SV = PVIV(0x8128450) at 0x81340f0
+    REFCNT = 1
+    FLAGS = (POK,OOK,pPOK)
+    IV = 1  (OFFSET)
+    PV = 0x8135781 ( "1" . ) "2345"\0
+    CUR = 4
+    LEN = 5
+
+Here the number of bytes chopped off (1) is put into IV, and
+C<Devel::Peek::Dump> helpfully reminds us that this is an offset. The
+portion of the string between the "real" and the "fake" beginnings is
+shown in parentheses, and the values of C<SvCUR> and C<SvLEN> reflect
+the fake beginning, not the real one.
+
+这里被切除的字符序列长度1被存如IV中，而且Devel::Peek::Dump包提示我们这是一个偏移量。
+在实际和伪起始位置之间的字符串显示在括号中，SvCUR和SvLEN表示的是伪起始位置，不是实际的值。
+
+Something similar to the offset hack is performed on AVs to enable
+efficient shifting and splicing off the beginning of the array; while
+C<AvARRAY> points to the first element in the array that is visible from
+Perl, C<AvALLOC> points to the real start of the C array. These are
+usually the same, but a C<shift> operation can be carried out by
+increasing C<AvARRAY> by one and decreasing C<AvFILL> and C<AvMAX>.
+Again, the location of the real start of the C array only comes into
+play when freeing the array. See C<av_shift> in F<av.c>.
+
+与这种偏移的hack技巧类似的方法被应用于高效地移除或切除数组的开头元素；尽管AvARRAY指向的是Perl看来array的起始位置，
+AvALLOC指向的才是数组的实际位置。它们通常都是一样的，但是shift操作是通过AvARRAY加1并且减少AvFILL和AvMAX的方式实现的。
+数组实际的位置只有在需要释放内存的时候才会被用到。
+
+## SV的结构
+
+=head2 What's Really Stored in an SV?
+
+Recall that the usual method of determining the type of scalar you have is
+to use C<Sv\*OK> macros.  Because a scalar can be both a number and a string,
+usually these macros will always return TRUE and calling the C<Sv*V>
+macros will do the appropriate conversion of string to integer/double or
+integer/double to string.
+
+请回忆，为了判断SV的实际类型我们通常会使用Sv\*OK系列的宏。由于scalar可以同时是一个数字和字符串，
+通常这些宏都会返回TRUE，并且调用调用Sv\*V系列的宏会自动对SV作出合适的转换。
+
+If you I<really> need to know if you have an integer, double, or string
+pointer in an SV, you can use the following three macros instead:
+
+如果你真的需要知道SV中指向的究竟是一个整型，浮点型还是字符串，你可以使用下面三个宏代替：
+
+    SvIOKp(SV*)
+    SvNOKp(SV*)
+    SvPOKp(SV*)
+
+These will tell you if you truly have an integer, double, or string pointer
+stored in your SV.  The "p" stands for private. 
+
+这些方法可以检测SV中存储的究竟是整型，浮点型或者字符串指针。"p"代表private。
+
+There are various ways in which the private and public flags may differ.
+For example, a tied SV may have a valid underlying value in the IV slot
+(so SvIOKp is true), but the data should be accessed via the FETCH
+routine rather than directly, so SvIOK is false. Another is when
+numeric conversion has occurred and precision has been lost: only the
+private flag is set on 'lossy' values. So when an NV is converted to an
+IV with loss, SvIOKp, SvNOKp and SvNOK will be set, while SvIOK wont be.
+
+在很多情况下public和private标记是不同的。例如，一个tied的SV在IV槽中有一个合法的值（也就是说SvIOKp为true），
+但是它的数据要通过FETCH方法简介获取，因此SvIOK为false。另一种情况是当发生了数字强转且丢失精度的时候：
+只有private标记被设置为'lossy'。所以当NV被转为IV且丢失精度的时候，SvIOKp，SvNOKp和SvNOK都会被设置，而SvIOK不会。
+
+In general, though, it's best to use the C<Sv*V> macros.
+
+总而言之，最好使用Sv\*V系列的宏。
+
+## 使用AVs
+
+=head2 Working with AVs
+
+There are two ways to create and load an AV.  The first method creates an
+empty AV:
+
+有两种方式可以创建并加载一个AV。第一种方法创建一个新的AV：
+
+    AV*  newAV();
+
+The second method both creates the AV and initially populates it with SVs:
+
+第二种方法同时创建并用SVs初始化。
+
+    AV*  av_make(I32 num, SV **ptr);
+
+The second argument points to an array containing C<num> C<SV*>'s.  Once the
+AV has been created, the SVs can be destroyed, if so desired.
+
+第二个参数指向一个包含了num个SV*的指针。一旦AV被创建，Svs就可以被销毁，如果你希望这样的话。
+
+Once the AV has been created, the following operations are possible on it:
+
+一旦AV被创建，可以对其进行如下操作：
+
+    void  av_push(AV*, SV*);
+    SV*   av_pop(AV*);
+    SV*   av_shift(AV*);
+    void  av_unshift(AV*, I32 num);
+
+These should be familiar operations, with the exception of C<av_unshift>.
+This routine adds C<num> elements at the front of the array with the C<undef>
+value.  You must then use C<av_store> (described below) to assign values
+to these new elements.
+
+这些都是你所熟悉的操作，除了av_unshift会在数组的前端添加num个值为undef的元素。你必须使用av_store为这些新元素赋值。
+
+Here are some other functions:
+
+这里还有其他一些函数：
+
+    I32   av_top_index(AV*);
+    SV**  av_fetch(AV*, I32 key, I32 lval);
+    SV**  av_store(AV*, I32 key, SV* val);
+
+The C<av_top_index> function returns the highest index value in an array (just
+like $#array in Perl).  If the array is empty, -1 is returned.  The
+C<av_fetch> function returns the value at index C<key>, but if C<lval>
+is non-zero, then C<av_fetch> will store an undef value at that index.
+The C<av_store> function stores the value C<val> at index C<key>, and does
+not increment the reference count of C<val>.  Thus the caller is responsible
+for taking care of that, and if C<av_store> returns NULL, the caller will
+have to decrement the reference count to avoid a memory leak.  Note that
+C<av_fetch> and C<av_store> both return C<SV**>'s, not C<SV*>'s as their
+return value.
+
+av_top_index返回数组的最大索引值（类似于Perl中的$#array）。如果数组为空则返回-1。av_fetch返回数组中索引为key的值，
+但是如果lval非0，则av_fetch将会在那个索引处存入undef。av_store将在索引key处存入val，
+并且不会增加val的引用计数。因此调用者需要处理它的索引计数，如果av_store返回NULL的话，调用者需要减少引用计数以防止内存泄漏。
+注意，av_fetch和av_store都会返回SV**，而不是SV*作为它们的返回值。
+
+A few more:
+
+更多函数：
+
+    void  av_clear(AV*);
+    void  av_undef(AV*);
+    void  av_extend(AV*, I32 key);
+
+The C<av_clear> function deletes all the elements in the AV* array, but
+does not actually delete the array itself.  The C<av_undef> function will
+delete all the elements in the array plus the array itself.  The
+C<av_extend> function extends the array so that it contains at least C<key+1>
+elements.  If C<key+1> is less than the currently allocated length of the array,
+then nothing is done.
+
+av_clear将会删除AV*数组中所有的元素，但是并不会删除数组自身。av_undef将会删除数组的全部元素以及它自己。
+av_extend函数将会拓展数组，因此它至少包含key+1个元素。如果key+1小于当前分配的数组长度，那么什么操作都不会进行。
+
+If you know the name of an array variable, you can get a pointer to its AV
+by using the following:
+
+如果你知道数组的名字，你也可以这样获取一个指向这个AV的指针：
+
+    AV*  get_av("package::varname", 0);
+
+This returns NULL if the variable does not exist.
+
+如果变量不存在的话将会返回NULL。
+
+See L<Understanding the Magic of Tied Hashes and Arrays> for more
+information on how to use the array access functions on tied arrays.
+
+请看 '理解tied的hashes和arrays的魔法' 以获得更多或如何对tied array使用数组访问函数的信息。
+
+## 使用HV
+
+=head2 Working with HVs
+
+To create an HV, you use the following routine:
+
+你可以使用如下方法创建HV：
+
+    HV*  newHV();
+
+Once the HV has been created, the following operations are possible on it:
+
+当HV被创建后，以下可以对其进行一下操作：
+
+    SV**  hv_store(HV*, const char* key, U32 klen, SV* val, U32 hash);
+    SV**  hv_fetch(HV*, const char* key, U32 klen, I32 lval);
+
+The C<klen> parameter is the length of the key being passed in (Note that
+you cannot pass 0 in as a value of C<klen> to tell Perl to measure the
+length of the key).  The C<val> argument contains the SV pointer to the
+scalar being stored, and C<hash> is the precomputed hash value (zero if
+you want C<hv_store> to calculate it for you).  The C<lval> parameter
+indicates whether this fetch is actually a part of a store operation, in
+which case a new undefined value will be added to the HV with the supplied
+key and C<hv_fetch> will return as if the value had already existed.
+
+klen参数是你传入的key的长度（注意你不能传入0值，让Perl自己判断key的长度）。val参数存有一个指向需要存入的scalar的SV指针，
+hash参数是预计算的hash值（如果你希望Perl为你算的话传入0）。lval参数决定了fetch操作是不是store操作的一部分，
+在这种情况下一个新的undefined值会被加入到HV中指定key值的地方并且hv_fetch将会返回就好像这个值已经存在了一样。
+
+Remember that C<hv_store> and C<hv_fetch> return C<SV**>'s and not just
+C<SV*>.  To access the scalar value, you must first dereference the return
+value.  However, you should check to make sure that the return value is
+not NULL before dereferencing it.
+
+记住hv_store和hv_getch返回SV**类型的值而不是SV*，为了获取scalar值，你必须先对返回值解引用。
+然而，你应该先检查返回值非NULL再解引用。
+
+The first of these two functions checks if a hash table entry exists, and the 
+second deletes it.
+
+下面这两个函数，第一个检查一个哈希表中是否存在某个键值，第二个删除它。
+
+    bool  hv_exists(HV*, const char* key, U32 klen);
+    SV*   hv_delete(HV*, const char* key, U32 klen, I32 flags);
+
+If C<flags> does not include the C<G_DISCARD> flag then C<hv_delete> will
+create and return a mortal copy of the deleted value.
+
+如果G_DEICAED标记不存在则hv_delete将会创建并返回一个被删除值的拷贝。
+
+And more miscellaneous functions:
+
+更多函数：
+
+    void   hv_clear(HV*);
+    void   hv_undef(HV*);
+
+Like their AV counterparts, C<hv_clear> deletes all the entries in the hash
+table but does not actually delete the hash table.  The C<hv_undef> deletes
+both the entries and the hash table itself.
+
+和针对AV操作的其他对应函数一样，hv_clear删除哈希表中所有的键值，但不会删除哈希表。hv_undef同时删除键值和表。
+
+Perl keeps the actual data in a linked list of structures with a typedef of HE.
+These contain the actual key and value pointers (plus extra administrative
+overhead).  The key is a string pointer; the value is an C<SV*>.  However,
+once you have an C<HE*>, to get the actual key and value, use the routines
+specified below.
+
+Perl将实际的值保存在使用HE typedef的结构体链表中。它们包含了实际的键和指向值的指针（以及其他用于管理的头部）。
+键是一个字符串指针；值是一个SV\*。然而，当你拥有一个HE*时，使用如下函数获取实际的键值：
+
+    I32    hv_iterinit(HV*);
+            /* Prepares starting point to traverse hash table */
+    HE*    hv_iternext(HV*);
+            /* Get the next entry, and return a pointer to a
+               structure that has both the key and value */
+    char*  hv_iterkey(HE* entry, I32* retlen);
+            /* Get the key from an HE structure and also return
+               the length of the key string */
+    SV*    hv_iterval(HV*, HE* entry);
+            /* Return an SV pointer to the value of the HE
+               structure */
+    SV*    hv_iternextsv(HV*, char** key, I32* retlen);
+            /* This convenience routine combines hv_iternext,
+	       hv_iterkey, and hv_iterval.  The key and retlen
+	       arguments are return values for the key and its
+	       length.  The value is returned in the SV* argument */
+
+If you know the name of a hash variable, you can get a pointer to its HV
+by using the following:
+
+如果你知道哈希变量的名字，你可以用如下方法获取指向这个HV的指针：
+
+    HV*  get_hv("package::varname", 0);
+
+This returns NULL if the variable does not exist.
+
+如果这个变量不存则会返回NULL。
+
+The hash algorithm is defined in the C<PERL_HASH> macro:
+
+哈希算法是通过PERL_HASH宏定义的：
+
+    PERL_HASH(hash, key, klen)
+
+The exact implementation of this macro varies by architecture and version
+of perl, and the return value may change per invocation, so the value
+is only valid for the duration of a single perl process.
+
+这个宏的实现与架构和perl的版本有关，它的返回值每次调用都可能不一样，所以它的值只有在某一个perl进程内有效。
+
+See L<Understanding the Magic of Tied Hashes and Arrays> for more
+information on how to use the hash access functions on tied hashes.
+
+请看 '理解tied的哈希和数组的魔法' 这一节以获取更多关于如何使用哈希访问函数访问tied哈希的信息。
+
+## 哈希拓展API
+
+=head2 Hash API Extensions
+
+Beginning with version 5.004, the following functions are also supported:
+
+自从5.004版本开始支持以下函数：
+
+    HE*     hv_fetch_ent  (HV* tb, SV* key, I32 lval, U32 hash);
+    HE*     hv_store_ent  (HV* tb, SV* key, SV* val, U32 hash);
+
+    bool    hv_exists_ent (HV* tb, SV* key, U32 hash);
+    SV*     hv_delete_ent (HV* tb, SV* key, I32 flags, U32 hash);
+
+    SV*     hv_iterkeysv  (HE* entry);
+
+Note that these functions take C<SV*> keys, which simplifies writing
+of extension code that deals with hash structures.  These functions
+also allow passing of C<SV*> keys to C<tie> functions without forcing
+you to stringify the keys (unlike the previous set of functions).
+
+注意，这些函数使用SV\*类型的键，这样简化了需要处理哈希结构的代码。这些函数同样允许传递SV\*类型的键给tie函数而不需要你将键强转为字符串（和之前的那些函数不同）。
+
+They also return and accept whole hash entries (C<HE*>), making their
+use more efficient (since the hash number for a particular string
+doesn't have to be recomputed every time).  See L<perlapi> for detailed
+descriptions.
+
+它们同样返回并接受完整的哈希键值结构（HE*），使得它们更加高效（因为特定字符串的哈希值不用每次都重复计算）。请看perlapi以了解更多细节。
+
+The following macros must always be used to access the contents of hash
+entries.  Note that the arguments to these macros must be simple
+variables, since they may get evaluated more than once.  See
+L<perlapi> for detailed descriptions of these macros.
+
+以下宏只能用于获取哈希键值结构的内容。注意这些宏的参数只能是简单的变量，因为它们可能会被计算多次。请看perlapi以了解更多细节。
+
+    HePV(HE* he, STRLEN len)
+    HeVAL(HE* he)
+    HeHASH(HE* he)
+    HeSVKEY(HE* he)
+    HeSVKEY_force(HE* he)
+    HeSVKEY_set(HE* he, SV* sv)
+
+These two lower level macros are defined, but must only be used when
+dealing with keys that are not C<SV*>s:
+
+这两个底层的宏只能被用于键不是SV*的情况。
+
+    HeKEY(HE* he)
+    HeKLEN(HE* he)
+
+Note that both C<hv_store> and C<hv_store_ent> do not increment the
+reference count of the stored C<val>, which is the caller's responsibility.
+If these functions return a NULL value, the caller will usually have to
+decrement the reference count of C<val> to avoid a memory leak.
+
+请注意hv_store和hv_store_ent都不会增加val的引用计数，这都是调用者需要做的。如果这些函数返回NULL值，调用者必须要减少引用计数的值以避免内存泄漏。
+
+## AVs，HVs和undefined值
+
+=head2 AVs, HVs and undefined values
+
+Sometimes you have to store undefined values in AVs or HVs. Although
+this may be a rare case, it can be tricky. That's because you're
+used to using C<&PL_sv_undef> if you need an undefined SV.
+
+有时你需要在AVs和HVs中存储undefined值。尽管这样的情形很少，但是却会很诡异。因为如果你需要一个未定义SV的时候得用&PV_sv_undef。
+
+For example, intuition tells you that this XS code:
+
+例如，直觉会告诉你以下XS代码：
+
+    AV *av = newAV();
+    av_store( av, 0, &PL_sv_undef );
+
+is equivalent to this Perl code:
+
+与以下代码等价：
+
+    my @av;
+    $av[0] = undef;
+
+Unfortunately, this isn't true. AVs use C<&PL_sv_undef> as a marker
+for indicating that an array element has not yet been initialized.
+Thus, C<exists $av[0]> would be true for the above Perl code, but
+false for the array generated by the XS code.
+
+不幸的是这不是真的。AV使用&PL_sv_undef作为元素没有被初始化的标识。应此exists $av[0]对于Perl代码来说是对的，但是对于XS来说却返回假。
+
+Other problems can occur when storing C<&PL_sv_undef> in HVs:
+
+当在HV中存储&PL_sv_undef的时候也会出问题：
+
+    hv_store( hv, "key", 3, &PL_sv_undef, 0 );
+
+This will indeed make the value C<undef>, but if you try to modify
+the value of C<key>, you'll get the following error:
+
+这样的确会使值为undef，但是当你试图改变key对应的值的时候将会得到以下错误：
+
+    Modification of non-creatable hash value attempted
+
+    试图改变没有被创建的哈希值
+
+In perl 5.8.0, C<&PL_sv_undef> was also used to mark placeholders
+in restricted hashes. This caused such hash entries not to appear
+when iterating over the hash or when checking for the keys
+with the C<hv_exists> function.
+
+在Perl5.8.0中，&PL_sv_undef也被用于在'受限'哈希表中标记占位符。
+这样会导致哈希键值在遍历哈希表或使用hv_exists的时候不会出现。
+
+You can run into similar problems when you store C<&PL_sv_yes> or
+C<&PL_sv_no> into AVs or HVs. Trying to modify such elements
+will give you the following error:
+
+当你将&PL_sv_yes或&PL_sv_no存入AV或HV的时候会遇到类似的问题。试图去改变这些元素的时候会产生如下错误：
+
+    Modification of a read-only value attempted
+
+    试图改变只读类型的值
+
+To make a long story short, you can use the special variables
+C<&PL_sv_undef>, C<&PL_sv_yes> and C<&PL_sv_no> with AVs and
+HVs, but you have to make sure you know what you're doing.
+
+长话短说，你可以将&PL_sv_undef，&PL_sv_yes或&PL_sv_no这些特殊变量用户AV和HV，
+但是请确保你知道自己在做什么。
+
+Generally, if you want to store an undefined value in an AV
+or HV, you should not use C<&PL_sv_undef>, but rather create a
+new undefined value using the C<newSV> function, for example:
+
+如果你想在AV或HV中存储一个undef值的时候，你不应该使用&PL_sv_undef，
+而是用newSV创建一个新的未定义值，例如：
+
+    av_store( av, 42, newSV(0) );
+    hv_store( hv, "foo", 3, newSV(0), 0 );
+
+## 引用
+
+=head2 References
+
+References are a special type of scalar that point to other data types
+(including other references).
+
+引用是一种特殊的scalar类型，用于指向其他的数据类型（包括引用类型）。
+
+To create a reference, use either of the following functions:
+
+请使用下列函数创建一个引用：
+
+    SV* newRV_inc((SV*) thing);
+    SV* newRV_noinc((SV*) thing);
+
+The C<thing> argument can be any of an C<SV*>, C<AV*>, or C<HV*>.  The
+functions are identical except that C<newRV_inc> increments the reference
+count of the C<thing>, while C<newRV_noinc> does not.  For historical
+reasons, C<newRV> is a synonym for C<newRV_inc>.
+
+参数thing可以是SV*，AV\*或HV*中的任意一种。这两个函数除了newRV_inc会增加thing的引用计数外，其他方面都是完全一样。newTV就是newRV_inc的匿名方法（某些历史原因导致的）。
+
+Once you have a reference, you can use the following macro to dereference
+the reference:
+
+当你有一个引用的时候，你可以使用下列宏来对其解引用：
+
+    SvRV(SV*)
+
+then call the appropriate routines, casting the returned C<SV*> to either an
+C<AV*> or C<HV*>, if required.
+
+然后调用合适的方法，将返回的SV*强转为AV\*或HV*。
+
+To determine if an SV is a reference, you can use the following macro:
+
+可以用下面的宏判断一个SV是否为一个引用。
+
+    SvROK(SV*)
+
+To discover what type of value the reference refers to, use the following
+macro and then check the return value.
+
+为了发现引用指向的类型，使用下列宏然后检查返回值。
+
+    SvTYPE(SvRV(SV*))
+
+The most useful types that will be returned are:
+
+最有用的返回类型有如下几种：
+
+    SVt_PVAV    Scalar
+    SVt_PVAV    Array
+    SVt_PVHV    Hash
+    SVt_PVCV    Code
+    SVt_PVGV    Glob (possibly a file handle)
+
+See L<perlapi/svtype> for more details.
+
+请参开 perlapi/svtype 以获得更多细节。
+
+## 被blessed的引用和类对象
+
+=head2 Blessed References and Class Objects
+
+References are also used to support object-oriented programming.  In perl's
+OO lexicon, an object is simply a reference that has been blessed into a
+package (or class).  Once blessed, the programmer may now use the reference
+to access the various methods in the class.
+
+引用同样可以被用于支持面向对象编程。在Perl的OO语法中，一个对象就是一个被blessed到包（或类）之中的引用。一旦被blessed，程序员就可以使用这个引用访问类的各种方法。
+
+A reference can be blessed into a package with the following function:
+
+一个引用可以通过使用如下方法被blessed到包中：
+
+    SV* sv_bless(SV* sv, HV* stash);
+
+The C<sv> argument must be a reference value.  The C<stash> argument
+specifies which class the reference will belong to.  See
+L<Stashes and Globs> for information on converting class names into stashes.
+
+参数sv必须为引用类型。参数stash指定了引用所属的类。查看 'Stashes 和 Globs'章节 以获的更多关于将类名转为stash的信息。
+
+/* Still under construction */
+
+/* 仍在建设中 */
+
+The following function upgrades rv to reference if not already one.
+Creates a new SV for rv to point to.  If C<classname> is non-null, the SV
+is blessed into the specified class.  SV is returned.
+
+下列函数将参数rv升级为引用。使得rv指向一个新创建的SV。如果classname不是NULL的话，SV将会被blessed成制定的类。将返回这个SV。
+
+	SV* newSVrv(SV* rv, const char* classname);
+
+The following three functions copy integer, unsigned integer or double
+into an SV whose reference is C<rv>.  SV is blessed if C<classname> is
+non-null.
+
+下面三个函数拷贝整型，无符号整型或浮点型到一个引用为rv的SV中。如果classname非空的话SV将被blessed。
+
+	SV* sv_setref_iv(SV* rv, const char* classname, IV iv);
+	SV* sv_setref_uv(SV* rv, const char* classname, UV uv);
+	SV* sv_setref_nv(SV* rv, const char* classname, NV iv);
+
+The following function copies the pointer value (I<the address, not the
+string!>) into an SV whose reference is rv.  SV is blessed if C<classname>
+is non-null.
+
+下面的函数拷贝指针的值到rv引用指向的SV里。如果classname非空的话SV将被blessed。
+
+	SV* sv_setref_pv(SV* rv, const char* classname, void* pv);
+
+The following function copies a string into an SV whose reference is C<rv>.
+Set length to 0 to let Perl calculate the string length.  SV is blessed if
+C<classname> is non-null.
+
+下面的函数将字符串拷贝到rv指向的SV里，当length为0的时候Perl会自动计算字符串的长度。如果classname非空的话SV将被blessed。
+
+    SV* sv_setref_pvn(SV* rv, const char* classname, char* pv,
+                                                         STRLEN length);
+
+The following function tests whether the SV is blessed into the specified
+class.  It does not check inheritance relationships.
+
+下面的函数测试SV是否被blessed成某种特定的类。它不会检查继承关系。
+
+	int  sv_isa(SV* sv, const char* name);
+
+The following function tests whether the SV is a reference to a blessed object.
+
+下面的函数测试SV是否为一个被blessed过的引用。
+
+	int  sv_isobject(SV* sv);
+
+The following function tests whether the SV is derived from the specified
+class. SV can be either a reference to a blessed object or a string
+containing a class name. This is the function implementing the
+C<UNIVERSAL::isa> functionality.
+
+下面的函数测试SV是否继承自某个特定的类。SV既可以是一个被blessed过的引用也可以是包含类名的字符串。
+就是这个函数实现了UNIVERSAL::ISA的功能。
+
+	bool sv_derived_from(SV* sv, const char* name);
+
+To check if you've got an object derived from a specific class you have
+to write:
+
+为了检查你是否得到了一个继承自特定类的对象，请使用：
+
+	if (sv_isobject(sv) && sv_derived_from(sv, class)) { ... }
+
+## 创建新变量
+
+=head2 Creating New Variables
+
+To create a new Perl variable with an undef value which can be accessed from
+your Perl script, use the following routines, depending on the variable type.
+
+为了创建一个你可以用脚本访问到的值为undef的新的Perl变量，根据变量的类型使用以下函数：
+
+    SV*  get_sv("package::varname", GV_ADD);
+    AV*  get_av("package::varname", GV_ADD);
+    HV*  get_hv("package::varname", GV_ADD);
+
+Notice the use of GV_ADD as the second parameter.  The new variable can now
+be set, using the routines appropriate to the data type.
+
+请注意第二个参数GC_ADD。用合适的方法就可以设置合适类型的变量。
+
+There are additional macros whose values may be bitwise OR'ed with the
+C<GV_ADD> argument to enable certain extra features.  Those bits are:
+
+也有额外的宏，其值会被用于和GV_ADD相或以开启新的特性。这些宏如下：
+
+=over
+
+=item GV_ADDMULTI
+
+* GV_ADDMULTI
+
+Marks the variable as multiply defined, thus preventing the:
+
+标记这个变量是多重定义的，应此避免了：
+
+    Name <varname> used only once: possible typo
+
+warning.
+
+    名称为 'varname' 的变量只适用了一次：可能为打字错误。
+
+的警告。
+
+=item GV_ADDWARN
+
+* GV_ADDWARN
+
+Issues the warning:
+
+表明了如下警告：
+
+    Had to create <varname> unexpectedly
+
+    if the variable did not exist before the function was called.
+
+-
+
+    如果变量名为varname的变量在函数调用时不存在的时候必须要创建它。
+
+=back
+
+If you do not specify a package name, the variable is created in the current
+package.
+
+如果你没有指定包名的的阿虎，变量将会创建在在当前包中。
+
+## 引用计数和销毁
+
+=head2 Reference Counts and Mortality
+
+Perl uses a reference count-driven garbage collection mechanism. SVs,
+AVs, or HVs (xV for short in the following) start their life with a
+reference count of 1.  If the reference count of an xV ever drops to 0,
+then it will be destroyed and its memory made available for reuse.
+
+Perl使用引用计数的垃圾收集机制。在SV，AV或HV（以下用xV代替）生命周期的开始它们的引用计数被初始化为1。如果xV的引用计数降低到0，它将会被销毁以释放内存。
+
+This normally doesn't happen at the Perl level unless a variable is
+undef'ed or the last variable holding a reference to it is changed or
+overwritten.  At the internal level, however, reference counts can be
+manipulated with the following macros:
+
+这通常不会发生在Perl语言的层面，除非一个变量被执行undef操作或者最有一个保存引用的变量被修改或覆盖。在Perl内部实现的层面可以通过以下宏管理引用计数。
+
+    int SvREFCNT(SV* sv);
+    SV* SvREFCNT_inc(SV* sv);
+    void SvREFCNT_dec(SV* sv);
+
+However, there is one other function which manipulates the reference
+count of its argument.  The C<newRV_inc> function, you will recall,
+creates a reference to the specified argument.  As a side effect,
+it increments the argument's reference count.  If this is not what
+you want, use C<newRV_noinc> instead.
+
+还有一个可以管理其参数引用计数的函数。newRV_inc可以创建它参数的一个引用。它的副作用是增加其参数的引用计数。如果这不是你想要的效果，使用newRV_noinc来代替。
+
+For example, imagine you want to return a reference from an XSUB function.
+Inside the XSUB routine, you create an SV which initially has a reference
+count of one.  Then you call C<newRV_inc>, passing it the just-created SV.
+This returns the reference as a new SV, but the reference count of the
+SV you passed to C<newRV_inc> has been incremented to two.  Now you
+return the reference from the XSUB routine and frget about the SV.
+But Perl hasn't!  Whenever the returned reference is destroyed, the
+reference count of the original SV is decreased to one and nothing happens.
+The SV will hang around without any way to access it until Perl itself
+terminates.  This is a memory leak.
+
+例如，想象一下你想要从XSUB函数返回一个引用。在XSUB函数内，你创建了一个引用计数为1的SV。然后你调用了newRV_inc，传入刚刚创建的SV，它会将对SV的引用作为一个新的SV返回。此时你传入的SV的引用计数已经是2了。现在你将这个引用从XSUB函数中返回并且忘掉了传入的那个SV。但是Perl没有！当返回的引用被销毁有，原先那个SV的引用计数变成1，什么都不会发生。这个SV将会一直存在直到Perl进程终止。这就是一个内存泄漏。
+
+The correct procedure, then, is to use C<newRV_noinc> instead of
+C<newRV_inc>.  Then, if and when the last reference is destroyed,
+the reference count of the SV will go to zero and it will be destroyed,
+stopping any memory leak.
+
+正确的做法是使用newRV_noinc取代newRV_inc。然后如果最后一个引用被销毁，SV的引用计数变为0它将会被销毁，避免了内存泄漏。
+
+There are some convenience functions available that can help with the
+destruction of xVs.  These functions introduce the concept of "mortality".
+An xV that is mortal has had its reference count marked to be decremented,
+but not actually decremented, until "a short time later".  Generally the
+term "short time later" means a single Perl statement, such as a call to
+an XSUB function.  The actual determinant for when mortal xVs have their
+reference count decremented depends on two macros, SAVETMPS and FREETMPS.
+See L<perlcall> and L<perlxs> for more details on these macros.
+
+还有一些更加方便的函数可以帮助你销毁xV。这些函数引入了"死亡性"这个概念。
+一个xV是"将死的"如果它的引用计数被标记为"减少的"，但是并没有实际减少而是"延迟到之后再减少"。一般来说"延迟之后"意味着一条Perl语句，例如调用一个XSUB函数。"将死"的xV的引用计数实际减少的时机是由两个宏决定的，SAVETMPS和FREETMPS。请看perlcall和perlxs以获得更多关于这些宏的细节。
+
+"Mortalization" then is at its simplest a deferred C<SvREFCNT_dec>.
+However, if you mortalize a variable twice, the reference count will
+later be decremented twice.
+
+"死亡性"可以理解为一个延时的SvREFCNT_dec。如果你'将死'一个变量两次，引用计数将会在之后减少两次。
+
+
+"Mortal" SVs are mainly used for SVs that are placed on perl's stack.
+For example an SV which is created just to pass a number to a called sub
+is made mortal to have it cleaned up automatically when it's popped off
+the stack. Similarly, results returned by XSUBs (which are pushed on the
+stack) are often made mortal.
+
+"将死"的SV通常被用于那些被分配在perl的栈上的SV。例如一个被创建用于传入一个数字到到函数中的SV，将被设置为'将死的'以使其在被栈弹出时自动释放。同样的，XSUB返回的结果（被放置到栈上）通常也会被设置为"将死的"。
+
+To create a mortal variable, use the functions:
+
+为了创建一个"将死的"变量，使用如下函数：
+
+    SV*  sv_newmortal()
+    SV*  sv_2mortal(SV*)
+    SV*  sv_mortalcopy(SV*)
+
+The first call creates a mortal SV (with no value), the second converts an existing
+SV to a mortal SV (and thus defers a call to C<SvREFCNT_dec>), and the
+third creates a mortal copy of an existing SV.
+Because C<sv_newmortal> gives the new SV no value, it must normally be given one
+via C<sv_setpv>, C<sv_setiv>, etc. :
+
+第一个调用创建一个没有值的将死SV，第二个函数将一个已经存在的SV转为将死的SV（也就是说延迟了一次SvREFCNT_dec的调用），第三个函数创建了一个已存在SV的将死SV拷贝。
+因为sv_newmortal没有给新建的SV设置任何值，它通常必须要用sv_setpv或sv_setiv等设置一个值:
+
+    SV *tmp = sv_newmortal();
+    sv_setiv(tmp, an_integer);
+
+As that is multiple C statements it is quite common so see this idiom instead:
+
+那是写成多条C语句，通常以下用法也经常可以看到。
+
+    SV *tmp = sv_2mortal(newSViv(an_integer));
+
+
+You should be careful about creating mortal variables.  Strange things
+can happen if you make the same value mortal within multiple contexts,
+or if you make a variable mortal multiple times. Thinking of "Mortalization"
+as deferred C<SvREFCNT_dec> should help to minimize such problems.
+For example if you are passing an SV which you I<know> has a high enough REFCNT
+to survive its use on the stack you need not do any mortalization.
+If you are not sure then doing an C<SvREFCNT_inc> and C<sv_2mortal>, or
+making a C<sv_mortalcopy> is safer.
+
+在创建"将死"变量的时候要非常仔细。如果你在多个场景下将同一个变量设置为'将死'或将一个变量设置多次，
+可能会导致奇怪的事情发生。将"将死性"想象成延迟的Sv_REFCNT_dec可以帮之你减少这样的问题。
+例如如果你
+
+The mortal routines are not just for SVs; AVs and HVs can be
+made mortal by passing their address (type-casted to C<SV*>) to the
+C<sv_2mortal> or C<sv_mortalcopy> routines.
+
+=head2 Stashes and Globs
+
+A B<stash> is a hash that contains all variables that are defined
+within a package.  Each key of the stash is a symbol
+name (shared by all the different types of objects that have the same
+name), and each value in the hash table is a GV (Glob Value).  This GV
+in turn contains references to the various objects of that name,
+including (but not limited to) the following:
+
+    Scalar Value
+    Array Value
+    Hash Value
+    I/O Handle
+    Format
+    Subroutine
+
+There is a single stash called C<PL_defstash> that holds the items that exist
+in the C<main> package.  To get at the items in other packages, append the
+string "::" to the package name.  The items in the C<Foo> package are in
+the stash C<Foo::> in PL_defstash.  The items in the C<Bar::Baz> package are
+in the stash C<Baz::> in C<Bar::>'s stash.
+
+To get the stash pointer for a particular package, use the function:
+
+    HV*  gv_stashpv(const char* name, I32 flags)
+    HV*  gv_stashsv(SV*, I32 flags)
+
+The first function takes a literal string, the second uses the string stored
+in the SV.  Remember that a stash is just a hash table, so you get back an
+C<HV*>.  The C<flags> flag will create a new package if it is set to GV_ADD.
+
+The name that C<gv_stash*v> wants is the name of the package whose symbol table
+you want.  The default package is called C<main>.  If you have multiply nested
+packages, pass their names to C<gv_stash*v>, separated by C<::> as in the Perl
+language itself.
+
+Alternately, if you have an SV that is a blessed reference, you can find
+out the stash pointer by using:
+
+    HV*  SvSTASH(SvRV(SV*));
+
+then use the following to get the package name itself:
+
+    char*  HvNAME(HV* stash);
+
+If you need to bless or re-bless an object you can use the following
+function:
+
+    SV*  sv_bless(SV*, HV* stash)
