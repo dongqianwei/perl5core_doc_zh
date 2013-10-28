@@ -1198,7 +1198,7 @@ out the stash pointer by using:
 
 then use the following to get the package name itself:
 
-然后这样获取它的报名：
+然后这样获取它的包名：
 
     char*  HvNAME(HV* stash);
 
@@ -1227,28 +1227,39 @@ Scalar variables normally contain only one type of value, an integer,
 double, pointer, or reference.  Perl will automatically convert the
 actual scalar data from the stored type into the requested type.
 
+Scalar变量一般只包含一种类型的值，一个整型，一个浮点型，指针或引用。Perl很自动将实际的scalar数据从存储的类型转为需要的类型。
+
 Some scalar variables contain more than one type of scalar data.  For
-example, the variable C<$!> contains either the numeric value of C<errno>
-or its string equivalent from either C<strerror> or C<sys_errlist[]>.
+example, the variable $! contains either the numeric value of C<errno>
+or its string equivalent from either strerror or sys_errlist[].
+
+一些scalar变来那个包含一种以上类型的scalar数据。例如，变量$!含了errno的数字值或它的等价字符串（来源于strerror或sys_errlist[]）
 
 To force multiple data values into an SV, you must do two things: use the
-C<sv_set*v> routines to add the additional scalar type, then set a flag
+sv_set*v routines to add the additional scalar type, then set a flag
 so that Perl will believe it contains more than one type of data.  The
 four macros to set the flags are:
+
+为了将多个数据存入一个SV，你必须做两件事：用sv_set*v方法添加额外的scalar类型，然后设置一个标记使得Perl认为它包好一种以上类型的数据。
+这四个设置标记的宏如下：
 
 	SvIOK_on
 	SvNOK_on
 	SvPOK_on
 	SvROK_on
 
-The particular macro you must use depends on which C<sv_set*v> routine
+The particular macro you must use depends on which sv_set*v routine
 you called first.  This is because every C<sv_set*v> routine turns on
 only the bit for the particular type of data being set, and turns off
 all the rest.
 
+究竟使用哪一种宏取决于你调用哪一个sv_set*v方法。这是因为每一个sv_set*v方法都会打开所属数据类型的标记并且关闭其他所有标记。
+
 For example, to create a new Perl variable called "dberror" that contains
 both the numeric and descriptive string error values, you could use the
 following code:
+
+例如为了创建一个名叫dberror的变量，它既包含错误码的数字也包含描述字符串，你可以使用以下代码：
 
     extern int  dberror;
     extern char *dberror_list;
@@ -1261,14 +1272,22 @@ following code:
 If the order of C<sv_setiv> and C<sv_setpv> had been reversed, then the
 macro C<SvPOK_on> would need to be called instead of C<SvIOK_on>.
 
+如果sv_setiv和sv_setpv的顺序颠倒了，那么你应该使用SvPOK_on这个宏代替SvIOK_on。
+
+## 魔法变量
+
 =head2 Magic Variables
 
 [This section still under construction.  Ignore everything here.  Post no
 bills.  Everything not permitted is forbidden.]
 
+[这一节仍在建设中。请忽略这里的内容。任何未被允许的行为都是禁止的。]
+
 Any SV may be magical, that is, it has special features that a normal
 SV does not have.  These features are stored in the SV structure in a
 linked list of C<struct magic>'s, typedef'ed to C<MAGIC>.
+
+任何SV都可能是有魔力的，也就是说它具备一般SV所没有的特性。这些特性被存储在SV结构体中的struct magic链表中，被typedef为MAGIC。
 
     struct magic {
         MAGIC*      mg_moremagic;
@@ -1283,14 +1302,22 @@ linked list of C<struct magic>'s, typedef'ed to C<MAGIC>.
 
 Note this is current as of patchlevel 0, and could change at any time.
 
+注意这个结构定义处于补丁阶段0，将来随时可能会发生改变。
+
+## 设置魔法属性
+
 =head2 Assigning Magic
 
 Perl adds magic to an SV using the sv_magic function:
+
+Perl使用sv_magic函数为SV添加魔法性：
 
   void sv_magic(SV* sv, SV* obj, int how, const char* name, I32 namlen);
 
 The C<sv> argument is a pointer to the SV that is to acquire a new magical
 feature.
+
+参数sv是一个指向需要新的魔法特性的SV的指针。
 
 If C<sv> is not already magical, Perl uses the C<SvUPGRADE> macro to
 convert C<sv> to type C<SVt_PVMG>. Perl then continues by adding new magic
@@ -1298,6 +1325,9 @@ to the beginning of the linked list of magical features.  Any prior entry
 of the same type of magic is deleted.  Note that this can be overridden,
 and multiple instances of the same type of magic can be associated with an
 SV.
+
+如果sv当前是没有魔法性的，Perl使用SvUPGRADE宏将sv转型为SVt_PVMG。Perl然后继续添加新的魔法到魔法特性链表的最前端。
+任何之前相同类型的魔法特性会被删除。注意这种特性是可以被覆盖的，多个相同类型的魔法特性可以被关联到同一个sv上。
 
 The C<name> and C<namlen> arguments are used to associate a string with
 the magic, typically the name of a variable. C<namlen> is stored in the
@@ -1307,6 +1337,10 @@ whether C<namlen> is greater than zero or equal to zero respectively.  As a
 special case, if C<(name && namlen == HEf_SVKEY)> then C<name> is assumed
 to contain an C<SV*> and is stored as-is with its REFCNT incremented.
 
+name和namlen参数被用于为这种魔法特性关联一个字符串，一般是变量名。namlen储存在mg_len字段。
+如果参数name非空，那么一个name的savepvn拷贝或者name自身将会被存储在mg_ptr字段，这取决于namlen是大于0还是等于0。
+当name&&namlen == HEf_SVKEY这种特殊情况下，name被认为包含一个SV*且被保存时其引用计数加一。
+
 The sv_magic function uses C<how> to determine which, if any, predefined
 "Magic Virtual Table" should be assigned to the C<mg_virtual> field.
 See the L<Magic Virtual Tables> section below.  The C<how> argument is also
@@ -1315,6 +1349,10 @@ from the set of macros C<PERL_MAGIC_foo> found in F<perl.h>. Note that before
 these macros were added, Perl internals used to directly use character
 literals, so you may occasionally come across old code or documentation
 referring to 'U' magic rather than C<PERL_MAGIC_uvar> for example.
+
+sv_magic函数使用参数how以决定哪一个预定义的"魔法虚表"项将会被赋予mg_virtual字段。
+请看下面 '魔法虚表' 一节。how参数同样存在mg_type字段。how的值应该取自PERL_MAGIC_foo系列的宏（定义在perl.h）。
+注意在这些宏被添加以前，Perl内部是直接使用字面字符的，例如你偶尔会看到在一些旧的代码或文档中会使用'U'魔法而不是PERL_MAGIC_uvar。
 
 The C<obj> argument is stored in the C<mg_obj> field of the C<MAGIC>
 structure.  If it is not the same as the C<sv> argument, the reference
