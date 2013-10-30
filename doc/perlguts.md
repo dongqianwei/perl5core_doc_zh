@@ -1445,7 +1445,7 @@ MGVTBL结构是在perl.h文件中编译期设置的，一共有32种类型。这
    svt_dup             duplicate a magic structure during thread cloning
    svt_local           copy magic to local value during 'local'
 
-   函数执政             行为
+   函数指针             行为
    ----------------    ------------
    svt_get             在sv的值被获取到之前做一些事
    svt_set             在sv被赋值之后做一些事
@@ -1561,6 +1561,9 @@ uppercase letter is typically used to represent some kind of composite type
 of that composite type. Some internals code makes use of this case
 relationship.  However, 'v' and 'V' (vec and v-string) are in no way related.
 
+当一个字母的大小写形式同时出现在表中，那么大写字母一般代表类型（一个列表或一个哈希表），小写字母一般代表那种类型的元素。
+一些内部代码使用了这种字母类型的关系。然而，'v'和'V'（vec和v-string）是没有关系的。
+
 The C<PERL_MAGIC_ext> and C<PERL_MAGIC_uvar> magic types are defined
 specifically for use by extensions and will not be used by perl itself.
 Extensions can use C<PERL_MAGIC_ext> magic to 'attach' private information
@@ -1568,9 +1571,14 @@ to variables (typically objects).  This is especially useful because
 there is no way for normal perl code to corrupt this private information
 (unlike using extra elements of a hash object).
 
+PERL_MAGIC_ext和PERL_MAGIC_uvar魔法类型被定义用于拓展而不是被Perl自身使用。拓展可以使用PERL_MAGIC_ext魔法来讲私有信息'附着'到变量上（通常是对象）。
+这中用法非常有用，因为perl代码没有办法破坏这些私有信息（与使用哈希表的额外元素不同）。
+
 Similarly, C<PERL_MAGIC_uvar> magic can be used much like tie() to call a
 C function any time a scalar's value is used or changed.  The C<MAGIC>'s
 C<mg_ptr> field points to a C<ufuncs> structure:
+
+与之类似，PERL_MAGIC_uvar魔法可以被用于像tie()一样，当一个scalar的值被使用或改变的时候调用一个C函数。MAGIC结构的mg_ptr字段指向一个ufuncs结构。
 
     struct ufuncs {
         I32 (*uf_val)(pTHX_ IV, SV*);
@@ -1583,6 +1591,9 @@ function will be called with C<uf_index> as the first arg and a pointer to
 the SV as the second.  A simple example of how to add C<PERL_MAGIC_uvar>
 magic is shown below.  Note that the ufuncs structure is copied by
 sv_magic, so you can safely allocate it on the stack.
+
+当SV被读取或写入的时候，将会调用uf_var或uf_set函数，第一个参数是uf_index，第二个参数是一个指向SV的指针。
+一个添加PERL_MAGIC_uvar的简单示例如下所示。注意ufuncs结构被sv_magic拷贝，因此你可以安全得将其分配到栈上。
 
     void
     Umagic(sv)
@@ -1597,6 +1608,8 @@ sv_magic, so you can safely allocate it on the stack.
 
 Attaching C<PERL_MAGIC_uvar> to arrays is permissible but has no effect.
 
+将PERL_MAGIC_uvar附着到数组上也是允许的，但是没有任何作用。
+
 For hashes there is a specialized hook that gives control over hash
 keys (but not values).  This hook calls C<PERL_MAGIC_uvar> 'get' magic
 if the "set" function in the C<ufuncs> structure is NULL.  The hook
@@ -1605,6 +1618,10 @@ an C<SV> through the functions C<hv_store_ent>, C<hv_fetch_ent>,
 C<hv_delete_ent>, and C<hv_exists_ent>.  Accessing the key as a string
 through the functions without the C<..._ent> suffix circumvents the
 hook.  See L<Hash::Util::FieldHash/GUTS> for a detailed description.
+
+对于哈希表，有一个特殊的手段可以控制哈希表的键。这个技巧调用PERL_MAGIC_uvar的'get'魔法（当ufuncs结构中的"set"函数为NULL的时候）。
+当哈希表通过hv_store_ent，hv_fetch_ent，hv_delete_ent和hv_exists_ent几个函数以SV为键访问的时候这个特性将被激活。
+当使用不带ent的函数以字符串为键访问的时候则不会激活。请看Hash::Util::FieldHash/GUTS以获得更多细节描述。
 
 Note that because multiple extensions may be using C<PERL_MAGIC_ext>
 or C<PERL_MAGIC_uvar> magic, it is important for extensions to take
@@ -1615,6 +1632,10 @@ C<MGVTBL>, even if all its fields will be C<0>, so that individual
 C<MAGIC> pointers can be identified as a particular kind of magic
 using their magic virtual table. C<mg_findext> provides an easy way
 to do that:
+
+注意因为可能有多个拓展同时使用到PERL_MAGIC_ext和PERL_MAGIC_uvar魔法，避免冲突非常重要。
+一般而言只对用被bessed为同一个类的对象使用魔法作为拓展就足够了。对于PERL_MAGIC_ext魔法，最好还是定义一个MGVTBL，
+即使它所有的域都是0，这样的话特定的MAGIC指针能通过它们的特殊的魔法虚表标识出来。mg_findext为此提供了一个简单的方式：
 
     STATIC MGVTBL my_vtbl = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -1637,6 +1658,11 @@ For example, calls to the C<sv_cat*()> functions typically need to be
 followed by C<SvSETMAGIC()>, but they don't need a prior C<SvGETMAGIC()>
 since their implementation handles 'get' magic.
 
+同样注意之前描述的sv_set*()和sv_cat*()函数不会引发它们目标上的'set'魔法。必须要在使用完这些函数后调用SVSETMAGIC()宏，
+或者调用sv_set*_mg()湖sv_cat*_mg()函数才能做到。与此类似，C代码在从一些不处理魔法的函数中获取SV时必须要调用SvGETMAGIC()宏以获得'get'魔法。
+请参考perapi了解这些函数的信息。
+例如，调用sv_cat*()函数一般需要在后面接着调用SvSETMAGIC()，但是他们不需要在之前调用SvGETMAGIC()，因为他们的实现已经处理好'get'魔法了。
+
 =head2 Finding Magic
 
     MAGIC *mg_find(SV *sv, int type); /* Finds the magic pointer of that
@@ -1648,10 +1674,15 @@ SV has multiple instances of that magical feature, the first one will be
 returned. C<mg_findext> can be used to find a C<MAGIC> structure of an SV
 based on both its magic type and its magic virtual table:
 
+这个方法返回一个SV中指向MAGIC结构的指针。如果SV没有哪个魔法特性则返回NULL。如果SV有这个魔法特性的多个实例将会返回第一个。
+mg_findext被用于通过魔法类型和魔法虚表找到SV的MAGIC结构。
+
     MAGIC *mg_findext(SV *sv, int type, MGVTBL *vtbl);
 
 Also, if the SV passed to C<mg_find> or C<mg_findext> is not of type
 SVt_PVMG, Perl may core dump.
+
+同样，如果传入mg_find和mg_findext的SV不输入SVt_PVMG的话，Perl可能会发生内核转储。
 
     int mg_copy(SV* sv, SV* nsv, const char* key, STRLEN klen);
 
@@ -1659,10 +1690,17 @@ This routine checks to see what types of magic C<sv> has.  If the mg_type
 field is an uppercase letter, then the mg_obj is copied to C<nsv>, but
 the mg_type field is changed to be the lowercase letter.
 
+这个函数检查sv的魔法类型。如果mg_type域是大写字符，那么mg_obj被拷贝的nsv，且mg_type域会被转为小写字符。
+
+## 理解Tied哈希表和数组的魔法
+
 =head2 Understanding the Magic of Tied Hashes and Arrays
+
 
 Tied hashes and arrays are magical beasts of the C<PERL_MAGIC_tied>
 magic type.
+
+Tied哈希表和数组属于PERL_MAGIC_tied魔法类型。
 
 WARNING: As of the 5.004 release, proper usage of the array and hash
 access functions requires understanding a few caveats.  Some
