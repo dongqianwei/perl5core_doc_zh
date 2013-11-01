@@ -1709,6 +1709,9 @@ in later releases, and are bracketed with [MAYCHANGE] below. If
 you find yourself actually applying such information in this section, be
 aware that the behavior may change in the future, umm, without warning.
 
+警告：在5.004版本，你需要理解一些注意事项才能正确得使用数组和哈希表的访问函数。一些注意事项其实是API的BUGS，以在后续版本修复，它们在下面会被用[可能改变]括起来。
+如果你发现你使用了这部分的信息，请留心它们的行为在将来可能会变化。
+
 The perl tie function associates a variable with an object that implements
 the various GET, SET, etc methods.  To perform the equivalent of the perl
 tie function from an XSUB, you must mimic this behaviour.  The code below
@@ -1719,6 +1722,10 @@ reference to the new tied hash.  Note that the code below does NOT call the
 TIEHASH method in the MyTie class -
 see L<Calling Perl Routines from within C Programs> for details on how
 to do this.
+
+perl tie函数将一个变量关联到一个实现了各种类似GET,SET等方法的对象。为了在XSUB函数中实现与perl tie函数一样的效果，你必须模仿这种行为。
+下列代码包含了需要的步骤--首先创建一个新的哈希表，然后创建另一个哈希表并将其bless到一个实现了tie方法的类上面。最后将两个哈希表tie到一起，并返回一个新的tied哈希表。
+注意下面的代码没有调用MyTie类中的TIEHASH方法--看 '在C程序中调用Perl函数' 一节以获取更多细节。 
 
     SV*
     mytie()
@@ -1746,8 +1753,15 @@ TIEARRAY object.  If C<av_store> did return NULL, a call to
 C<SvREFCNT_dec(val)> will also be usually necessary to avoid a memory
 leak. [/MAYCHANGE]
 
+当传给av_store函数一个tied数组参数时，仅仅会使用mg_copy将数组的魔法拷贝到需要存储的值中。
+它同样可能返回NULL，表明这个值实际上不需要被储存在数组中。[可能改变]
+在对一个tired数组使用av_store后，调用者需要继续调用mg_set(val)以触发对tied数组对象perl级别的STORE方法。
+如果av_store返回NULL，则需要调用SvREFCNG_dec(val)以避免内存泄漏。
+
 The previous paragraph is applicable verbatim to tied hash access using the
 C<hv_store> and C<hv_store_ent> functions as well.
+
+之前的段落同样适用于tied使用hv_store和hv_store_ent访问哈希表。
 
 C<av_fetch> and the corresponding hash functions C<hv_fetch> and
 C<hv_fetch_ent> actually return an undefined mortal value whose magic
@@ -1758,6 +1772,12 @@ the perl level "FETCH" method on the underlying TIE object.  Similarly,
 you may also call C<mg_set()> on the return value after possibly assigning
 a suitable value to it using C<sv_setsv>,  which will invoke the "STORE"
 method on the TIE object. [/MAYCHANGE]
+
+av_fetch和对应的hv_fetch和hv_fetch_ent实际上返回的是一个用mg_copy初始化的未定义的将死值。
+注意这个返回值不需要主动释放，因为它已经是将死的了。
+[可能改变]
+但是你你需要对这些返回值调用mg_get()以触发对tied对象perl级别的STORE方法。类似，在你对这些返回值使用sv_setsv赋值后可能需要调用mg_set()以出发STORE操作。
+[/可能改变]
 
 [MAYCHANGE]
 In other words, the array or hash fetch/store functions don't really
@@ -1775,6 +1795,15 @@ changed to provide more transparent access to both tied and normal data
 types in future versions.
 [/MAYCHANGE]
 
+[可能改版]
+从另一方面来看，对于tied数组和哈希表来说，fetch/store函数并不是真的获取或存储实际值。
+他们仅仅是调用mg_copy来对处理的值施魔法。后续的mg_get和mg_set才是真正调用了TIE方法。
+应此这个魔法机制目前实现的是一种对数组和哈希的延时的操作。
+
+当前（对于perl 5.004版本来说），使用哈希表和数组访问方法需要用户清楚他们是在操作‘普通的’还是tied对象。
+将来API可能会变化以提供更加透明的访问方式。
+[/可能改版]
+
 You would do well to understand that the TIEARRAY and TIEHASH interfaces
 are mere sugar to invoke some perl method calls while using the uniform hash
 and array syntax.  The use of this sugar imposes some overhead (typically
@@ -1784,9 +1813,16 @@ This overhead will be comparatively small if the TIE methods are themselves
 substantial, but if they are only a few statements long, the overhead
 will not be insignificant.
 
+你肯定轻松理解到TIEARRAY和TIEHASH接口不过是使用哈希表和数组操作语法来调用一些perl函数的语法糖而已。
+使用这些语法糖会导致某些性能损耗。但是如果你的TIE方法非常庞大的话这些损耗是可以忽略不计的。但是如果方法只有几条语句那么长的话，新能损耗就不可以被忽略了。
+
+## 本地化改变
+
 =head2 Localizing changes
 
 Perl has a very handy construction
+
+Perl有中非常易用的构造方式：
 
   {
     local $var = 2;
@@ -1794,6 +1830,8 @@ Perl has a very handy construction
   }
 
 This construction is I<approximately> equivalent to
+
+这种方式大概类似于以下代码:
 
   {
     my $oldvar = $var;
@@ -1807,6 +1845,8 @@ reinstate the initial value of $var, irrespective of how control exits
 the block: C<goto>, C<return>, C<die>/C<eval>, etc. It is a little bit
 more efficient as well.
 
+最大的不同是第一种构造将会$var的值将会复原，无论你以什么方式退出代码块。这样会更加高效。
+
 There is a way to achieve a similar task from C via Perl API: create a
 I<pseudo-block>, and arrange for some changes to be automatically
 undone at the end of it, either explicit, or via a non-local exit (via
@@ -1818,6 +1858,8 @@ subroutine/block, or an existing pair for freeing TMPs) may be
 used. (In the second case the overhead of additional localization must
 be almost negligible.) Note that any XSUB is automatically enclosed in
 an C<ENTER>/C<LEAVE> pair.
+
+
 
 Inside such a I<pseudo-block> the following service is available:
 
