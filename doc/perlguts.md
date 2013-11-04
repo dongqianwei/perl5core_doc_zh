@@ -2000,14 +2000,21 @@ C<ENTER>/C<LEAVE> I<pseudo-block> will restore the value of C<SV>
 using the stored value. It doesn't handle magic. Use C<save_scalar> if
 magic is affected.
 
+复制当前SV的值，当从ENTER/LEAVE代码块中退出时会使用保存下来的值恢复SV。
+它不会处理魔法。如果需要处理魔法的话使用save_scalar。
+
 =item C<void save_list(SV **sarg, I32 maxsarg)>
 
 A variant of C<save_item> which takes multiple arguments via an array
 C<sarg> of C<SV*> of length C<maxsarg>.
 
+save_item的变种，通过sary数组传入多个SV*以及其长度maxsarg。
+
 =item C<SV* save_svref(SV **sptr)>
 
 Similar to C<save_scalar>, but will reinstate an C<SV *>.
+
+和save_scalar类似，但是会恢复SV*。
 
 =item C<void save_aptr(AV **aptr)>
 
@@ -2015,24 +2022,38 @@ Similar to C<save_scalar>, but will reinstate an C<SV *>.
 
 Similar to C<save_svref>, but localize C<AV *> and C<HV *>.
 
+和save_svref类似，但是将本地化AV*和HV*。
+
 =back
 
 The C<Alias> module implements localization of the basic types within the
 I<caller's scope>.  People who are interested in how to localize things in
 the containing scope should take a look there too.
 
+Alias模块实现了在调用者域中本地化基本类型。对如何在包含域中本地化数据的人可以看下。
+
+## 函数
+
 =head1 Subroutines
 
 =head2 XSUBs and the Argument Stack
+
+XSUB函数如参数栈
 
 The XSUB mechanism is a simple way for Perl programs to access C subroutines.
 An XSUB routine will have a stack that contains the arguments from the Perl
 program, and a way to map from the Perl data structures to a C equivalent.
 
+XSUB机制是Perl程序访问C函数的一种简单的方法。一个XSUB函数有一个包含了从Perl程序传入的参数的栈，
+和一种将Perl数据结构映射到对等的C结构的方法。
+
 The stack arguments are accessible through the C<ST(n)> macro, which returns
 the C<n>'th stack argument.  Argument 0 is the first argument passed in the
 Perl subroutine call.  These arguments are C<SV*>, and can be used anywhere
 an C<SV*> is used.
+
+参数栈可以通过ST(n)宏访问到，其返回第n个栈的参数。第0参数是Perl函数传入的第一个参数。这些参数类型为SV*，
+可以被用于任何SV*被使用的地方。
 
 Most of the time, output from the C routine can be handled through use of
 the RETVAL and OUTPUT directives.  However, there are some cases where the
@@ -2040,17 +2061,26 @@ argument stack is not already long enough to handle all the return values.
 An example is the POSIX tzname() call, which takes no arguments, but returns
 two, the local time zone's standard and summer time abbreviations.
 
+大多数情况下，C函数的的输出可以用RETVAL和OUTPUT指令处理。然而，在某些情况下参数栈不足以处理所有的返回值。
+比如POSIX tzname()调用，它没有任何参数，但是却返回两个参数：本地时区和夏令2时的缩写。
+
 To handle this situation, the PPCODE directive is used and the stack is
 extended using the macro:
+
+为了处理这种情况，需要使用PPCODE指令并且使用如下宏来扩展栈大小：
 
     EXTEND(SP, num);
 
 where C<SP> is the macro that represents the local copy of the stack pointer,
 and C<num> is the number of elements the stack should be extended by.
 
+SP是代表当前栈指针的本地拷贝，num是栈应当拓展的元素数量。
+
 Now that there is room on the stack, values can be pushed on it using C<PUSHs>
 macro. The pushed values will often need to be "mortal" (See
 L</Reference Counts and Mortality>):
+
+现在栈上又有空间了，可以使用PUSHs宏向栈上压入值。压入的值通常是'将死的'。
 
     PUSHs(sv_2mortal(newSViv(an_integer)))
     PUSHs(sv_2mortal(newSVuv(an_unsigned_integer)))
@@ -2063,22 +2093,36 @@ L</Reference Counts and Mortality>):
 And now the Perl program calling C<tzname>, the two values will be assigned
 as in:
 
+现在当Perl程序调用tzname时，将用一下方式赋两个值：
+
     ($standard_abbrev, $summer_abbrev) = POSIX::tzname;
 
 An alternate (and possibly simpler) method to pushing values on the stack is
 to use the macro:
+
+另一种压栈的方式（可能更加简单）是使用如下宏：
 
     XPUSHs(SV*)
 
 This macro automatically adjusts the stack for you, if needed.  Thus, you
 do not need to call C<EXTEND> to extend the stack.
 
+如果有必要的话，这个宏将自适应栈空间。因此你不需要调用EXTEND来拓展栈空间了。
+
 Despite their suggestions in earlier versions of this document the macros
 C<(X)PUSH[iunp]> are I<not> suited to XSUBs which return multiple results.
 For that, either stick to the C<(X)PUSHs> macros shown above, or use the new
 C<m(X)PUSH[iunp]> macros instead; see L</Putting a C value on Perl stack>.
 
+尽管在该文档的早期版本中建议(X)PUSH[iunp]不适用于返回多个值的XSUB函数。
+因此，要么坚持使用上面提到的(X)PUSHs宏，要么改为使用新的m(X)PUSH[iunp]宏；
+参见 '向一个Perl栈上压如一个C的值'。
+
 For more information, consult L<perlxs> and L<perlxstut>.
+
+请参考perlxs和perlxstut以获取更多信息。
+
+## 和XSUB函数相关的自动载入
 
 =head2 Autoloading with XSUBs
 
@@ -2086,7 +2130,11 @@ If an AUTOLOAD routine is an XSUB, as with Perl subroutines, Perl puts the
 fully-qualified name of the autoloaded subroutine in the $AUTOLOAD variable
 of the XSUB's package.
 
+如果AUTOLOAD方法的对象是一个XSUB，那么和Perl函数一样，Perl会将自动载入的函数全名放置到XSUB所在包的$AUTOLOAD变量中。
+
 But it also puts the same information in certain fields of the XSUB itself:
+
+但是它会将同样的信息放到XSUB自身的某些字段中。
 
     HV *stash           = CvSTASH(cv);
     const char *subname = SvPVX(cv);
@@ -2097,12 +2145,21 @@ C<SvPVX(cv)> contains just the sub name itself, not including the package.
 For an AUTOLOAD routine in UNIVERSAL or one of its superclasses,
 C<CvSTASH(cv)> returns NULL during a method call on a nonexistent package.
 
+SvPVX(cv)包含了函数自己的名字，不包括包名。对于在UNIVERSAL或其父类中的AUTOLOAD方法来说，
+当调用一个不存在道德包的方法时CvSTASH(cv)放回NULL。
+
 B<Note>: Setting $AUTOLOAD stopped working in 5.6.1, which did not support
 XS AUTOLOAD subs at all.  Perl 5.8.0 introduced the use of fields in the
 XSUB itself.  Perl 5.16.0 restored the setting of $AUTOLOAD.  If you need
 to support 5.8-5.14, use the XSUB's fields.
 
+注意：5.6.1版本不支持设置$AUTOLOAD，这个版本压根不支持XS AUTOLOAD函数。Perl 5.8.0引入和XSUB自身字段的使用。
+Perl 5.16.0恢复了$AUTOLOAD的设置。如果你需要支持5.18-5.14，使用XSUB函数的字段。
+
+## 从C程序中调用Perl函数。
 =head2 Calling Perl Routines from within C Programs
+
+有四个函数可以用来从C程序中调用Perl函数。这四个分别为：
 
 There are four routines that can be used to call a Perl subroutine from
 within a C program.  These four are:
