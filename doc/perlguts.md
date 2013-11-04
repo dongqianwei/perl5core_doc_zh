@@ -1859,9 +1859,13 @@ used. (In the second case the overhead of additional localization must
 be almost negligible.) Note that any XSUB is automatically enclosed in
 an C<ENTER>/C<LEAVE> pair.
 
-
+可以在C语言中通过调用Perl API实现类似的功能：创建一个伪代码块，然后进行一些变化并在结尾处自动恢复，无论是主动的还是通过一次非正常退出（通过die函数）。
+一个类似于代码块的构建是通过ENTER/LEAVE这一对宏实现的（参见perlcall/"返回一个scalar一节"）。像这样的构造也许会为一些特殊的需要本地化的任务热创建，
+亦或本身就存在（比如Perl函数和代码块，or an existing pair for freeing TMPs）。（在第二种情况下不需要多余的本地化。）注意任何XSUB函数都被自动包含在一对ENTER/LEAVE对中。
 
 Inside such a I<pseudo-block> the following service is available:
+
+在这样一个伪代码块中一下服务是可用的：
 
 =over 4
 
@@ -1876,6 +1880,8 @@ Inside such a I<pseudo-block> the following service is available:
 These macros arrange things to restore the value of integer variable
 C<i> at the end of enclosing I<pseudo-block>.
 
+这些宏会将整数i的值在代码块结束后恢复。
+
 =item C<SAVESPTR(s)>
 
 =item C<SAVEPPTR(p)>
@@ -1884,6 +1890,8 @@ These macros arrange things to restore the value of pointers C<s> and
 C<p>. C<s> must be a pointer of a type which survives conversion to
 C<SV*> and back, C<p> should be able to survive conversion to C<char*>
 and back.
+
+这些宏会将指针s和p的值恢复。s必须满足可以被强转为SV*并复原，p必须满足可以被强转为char*并复原。
 
 =item C<SAVEFREESV(SV *sv)>
 
@@ -1894,6 +1902,9 @@ extends the lifetime of C<sv> until the beginning of the next statement,
 C<SAVEFREESV> extends it until the end of the enclosing scope.  These
 lifetimes can be wildly different.
 
+sv的引用计数将在代码框的几位减一。这和sv_2mortal类似都是SvREFCNT_dec的延时操作。然而，sv_2mortal将sv的生命延长到下一条语句的开始，SAVEFREESV则延长到代码块的结束。
+这些生命周期可能完全不同。
+
 Also compare C<SAVEMORTALIZESV>.
 
 =item C<SAVEMORTALIZESV(SV *sv)>
@@ -1903,19 +1914,27 @@ scope instead of decrementing its reference count.  This usually has the
 effect of keeping C<sv> alive until the statement that called the currently
 live scope has finished executing.
 
+和SAVEFREESV一样，但是在代码块的结束处将sv设置为将死的而不减少它的引用计数。这通常会使得sv生存到调用这个代码块的语句运行结束。
+
 =item C<SAVEFREEOP(OP *op)>
 
 The C<OP *> is op_free()ed at the end of I<pseudo-block>.
+
+OP* 将在代码块末尾处被op_free()。
 
 =item C<SAVEFREEPV(p)>
 
 The chunk of memory which is pointed to by C<p> is Safefree()ed at the
 end of I<pseudo-block>.
 
+p指针指向的内存块将在代码块末尾处被Safefree()。
+
 =item C<SAVECLEARSV(SV *sv)>
 
 Clears a slot in the current scratchpad which corresponds to C<sv> at
 the end of I<pseudo-block>.
+
+在代码块结尾处清除表示一个sv的暂存器中的槽。
 
 =item C<SAVEDELETE(HV *hv, char *key, I32 length)>
 
@@ -1924,6 +1943,8 @@ string pointed to by C<key> is Safefree()ed.  If one has a I<key> in
 short-lived storage, the corresponding string may be reallocated like
 this:
 
+hv的键key在代码块的结尾处删除。key指向的字符串被safefree()掉。如果key被保存在短期储存空间中，对应的字符串可以这样重分配。
+
   SAVEDELETE(PL_defstash, savepv(tmpbuf), strlen(tmpbuf));
 
 =item C<SAVEDESTRUCTOR(DESTRUCTORFUNC_NOCONTEXT_t f, void *p)>
@@ -1931,15 +1952,21 @@ this:
 At the end of I<pseudo-block> the function C<f> is called with the
 only argument C<p>.
 
+在代码块结尾，将调用f并传入参数p。
+
 =item C<SAVEDESTRUCTOR_X(DESTRUCTORFUNC_t f, void *p)>
 
 At the end of I<pseudo-block> the function C<f> is called with the
 implicit context argument (if any), and C<p>.
 
+在代码块结尾，将调用f，隐式传入上下文变量（如果有的话）和p。
+
 =item C<SAVESTACK_POS()>
 
 The current offset on the Perl internal stack (cf. C<SP>) is restored
 at the end of I<pseudo-block>.
+
+在代码块结尾，Perl内部栈偏移（cf。 SP）将被恢复。
 
 =back
 
@@ -1948,17 +1975,23 @@ provide pointers to the modifiable data explicitly (either C pointers,
 or Perlish C<GV *>s).  Where the above macros take C<int>, a similar
 function takes C<int *>.
 
+以下API列表包含函数，应此需要显式提供指向可变数据的指针（C指针或者Perlish的GV*）。比如如果以上的宏传入int的话，那么一个相似的函数就要传入int*。
+
 =over 4
 
 =item C<SV* save_scalar(GV *gv)>
 
 Equivalent to Perl code C<local $gv>.
 
+和Perl代码local $gv一样。
+
 =item C<AV* save_ary(GV *gv)>
 
 =item C<HV* save_hash(GV *gv)>
 
 Similar to C<save_scalar>, but localize C<@gv> and C<%gv>.
+
+和save_scalar一样，但是会本地化@gv和%gv。
 
 =item C<void save_item(SV *item)>
 
