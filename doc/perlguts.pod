@@ -1,4 +1,4 @@
-# 描述
+=head1 描述
 
 =head1 DESCRIPTION
 
@@ -9,11 +9,11 @@ questions or comments to the author below.
 
 本文档试图描述如何使用Perl API，同时提供一些Perl核心基本功能的信息。本文档仍未完成且可能包含很多错误。如有问题或注释请向下面列出的作者提出。
 
-#变量
+=head1 变量
 
 =head1 Variables
 
-##类型
+=head2 类型
 
 =head2 Datatypes
 
@@ -29,7 +29,7 @@ Each typedef has specific routines that manipulate the various data types.
 
 每种类型都有相应的数据管理方式。
 
-##什么是"IV"?
+=head2 什么是"IV"?
 
 =head2 What is an "IV"?
 
@@ -46,7 +46,7 @@ they will both be 64 bits.
 
 Perl同样适用I32和I16两个typedef，通常至少有32位或16位长(同样也有U32和U64)。但是在Crays上，它们都是64位。
 
-##使用SV
+=head2 使用SV
 
 =head2 Working with SVs
 
@@ -340,7 +340,7 @@ call is not necessary (see L<Reference Counts and Mortality>).
 
 为了释放一个你创建的SV，调用SvREFCNT_dec(SV*)。通常你不需要调用这个方法（请看引用计数与销毁）。
 
-## 偏移
+=head2 偏移
 
 =head2 Offsets
 
@@ -399,7 +399,7 @@ play when freeing the array. See C<av_shift> in F<av.c>.
 AvALLOC指向的才是数组的实际位置。它们通常都是一样的，但是shift操作是通过AvARRAY加1并且减少AvFILL和AvMAX的方式实现的。
 数组实际的位置只有在需要释放内存的时候才会被用到。
 
-## SV的结构
+=head2 SV的结构
 
 =head2 What's Really Stored in an SV?
 
@@ -442,7 +442,7 @@ In general, though, it's best to use the C<Sv*V> macros.
 
 总而言之，最好使用Sv\*V系列的宏。
 
-## 使用AVs
+=head2 使用AVs
 
 =head2 Working with AVs
 
@@ -538,7 +538,7 @@ information on how to use the array access functions on tied arrays.
 
 请看 '理解tied的hashes和arrays的魔法' 以获得更多或如何对tied array使用数组访问函数的信息。
 
-## 使用HV
+=head2 使用HV
 
 =head2 Working with HVs
 
@@ -656,7 +656,7 @@ information on how to use the hash access functions on tied hashes.
 
 请看 '理解tied的哈希和数组的魔法' 这一节以获取更多关于如何使用哈希访问函数访问tied哈希的信息。
 
-## 哈希拓展API
+=head2 哈希拓展API
 
 =head2 Hash API Extensions
 
@@ -715,7 +715,7 @@ decrement the reference count of C<val> to avoid a memory leak.
 
 请注意hv_store和hv_store_ent都不会增加val的引用计数，这都是调用者需要做的。如果这些函数返回NULL值，调用者必须要减少引用计数的值以避免内存泄漏。
 
-## AVs，HVs和undefined值
+=head2 AVs，HVs和undefined值
 
 =head2 AVs, HVs and undefined values
 
@@ -796,7 +796,7 @@ new undefined value using the C<newSV> function, for example:
     av_store( av, 42, newSV(0) );
     hv_store( hv, "foo", 3, newSV(0), 0 );
 
-## 引用
+=head2 引用
 
 =head2 References
 
@@ -858,7 +858,7 @@ See L<perlapi/svtype> for more details.
 
 请参开 perlapi/svtype 以获得更多细节。
 
-## 被blessed的引用和类对象
+=head2 被blessed的引用和类对象
 
 =head2 Blessed References and Class Objects
 
@@ -950,7 +950,7 @@ to write:
 
 	if (sv_isobject(sv) && sv_derived_from(sv, class)) { ... }
 
-## 创建新变量
+=head2 创建新变量
 
 =head2 Creating New Variables
 
@@ -1014,7 +1014,7 @@ package.
 
 如果你没有指定包名的的阿虎，变量将会创建在在当前包中。
 
-## 引用计数和销毁
+=head2 引用计数和销毁
 
 =head2 Reference Counts and Mortality
 
@@ -1138,7 +1138,7 @@ C<sv_2mortal> or C<sv_mortalcopy> routines.
 
 '将死化'函数不仅仅可用于SV；AV和HV也可以通过将它们的地址（强转为类型SV*）传入sv_2mortal或sv_mortalcopy方法以设置为'将死的';
 
-## Stashes和Globs
+=head2 Stashes和Globs
 
 =head2 Stashes and Globs
 
@@ -1219,7 +1219,7 @@ For more information on references and blessings, consult L<perlref>.
 
 参考prelref以获取关于引用和bless的更多信息。
 
-## 双类型SV
+=head2 双类型SV
 
 =head2 Double-Typed SVs
 
@@ -1274,7 +1274,7 @@ macro C<SvPOK_on> would need to be called instead of C<SvIOK_on>.
 
 如果sv_setiv和sv_setpv的顺序颠倒了，那么你应该使用SvPOK_on这个宏代替SvIOK_on。
 
-## 魔法变量
+=head2 魔法变量
 
 =head2 Magic Variables
 
@@ -1304,7 +1304,7 @@ Note this is current as of patchlevel 0, and could change at any time.
 
 注意这个结构定义处于补丁阶段0，将来随时可能会发生改变。
 
-## 设置魔法属性
+=head2 设置魔法属性
 
 =head2 Assigning Magic
 
@@ -1397,7 +1397,7 @@ virtual table, use C<sv_unmagicext> instead:
 
     int sv_unmagicext(SV *sv, int type, MGVTBL *vtbl);
 
-## 魔法虚表
+=head2 魔法虚表
 
 =head2 Magic Virtual Tables
 
@@ -1692,7 +1692,7 @@ the mg_type field is changed to be the lowercase letter.
 
 这个函数检查sv的魔法类型。如果mg_type域是大写字符，那么mg_obj被拷贝的nsv，且mg_type域会被转为小写字符。
 
-## 理解Tied哈希表和数组的魔法
+=head2 理解Tied哈希表和数组的魔法
 
 =head2 Understanding the Magic of Tied Hashes and Arrays
 
@@ -1816,7 +1816,7 @@ will not be insignificant.
 你肯定轻松理解到TIEARRAY和TIEHASH接口不过是使用哈希表和数组操作语法来调用一些perl函数的语法糖而已。
 使用这些语法糖会导致某些性能损耗。但是如果你的TIE方法非常庞大的话这些损耗是可以忽略不计的。但是如果方法只有几条语句那么长的话，新能损耗就不可以被忽略了。
 
-## 本地化改变
+=head2 本地化改变
 
 =head2 Localizing changes
 
@@ -2032,7 +2032,7 @@ the containing scope should take a look there too.
 
 Alias模块实现了在调用者域中本地化基本类型。对如何在包含域中本地化数据的人可以看下。
 
-## 函数
+=head2 函数
 
 =head1 Subroutines
 
@@ -2122,7 +2122,7 @@ For more information, consult L<perlxs> and L<perlxstut>.
 
 请参考perlxs和perlxstut以获取更多信息。
 
-## 和XSUB函数相关的自动载入
+=head2 和XSUB函数相关的自动载入
 
 =head2 Autoloading with XSUBs
 
@@ -2156,7 +2156,8 @@ to support 5.8-5.14, use the XSUB's fields.
 注意：5.6.1版本不支持设置$AUTOLOAD，这个版本压根不支持XS AUTOLOAD函数。Perl 5.8.0引入和XSUB自身字段的使用。
 Perl 5.16.0恢复了$AUTOLOAD的设置。如果你需要支持5.18-5.14，使用XSUB函数的字段。
 
-## 从C程序中调用Perl函数。
+=head2 从C程序中调用Perl函数。
+
 =head2 Calling Perl Routines from within C Programs
 
 有四个函数可以用来从C程序中调用Perl函数。这四个分别为：
