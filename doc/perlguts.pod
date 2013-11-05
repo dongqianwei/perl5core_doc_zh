@@ -1,76 +1,38 @@
+=head1 名称
+
+perlguts - Perl API介绍
+
 =head1 描述
 
-=head1 DESCRIPTION
-
-This document attempts to describe how to use the Perl API, as well as
-to provide some info on the basic workings of the Perl core. It is far
-from complete and probably contains many errors. Please refer any
-questions or comments to the author below.
-
-本文档试图描述如何使用Perl API，同时提供一些Perl核心基本功能的信息。本文档仍未完成且可能包含很多错误。如有问题或注释请向下面列出的作者提出。
+本文档试图描述如何使用Perl API，同时提供一些Perl核心基本功能的信息。
+本文档仍未完成且可能包含很多错误。如有问题或注释请向下面列出的作者提出。
 
 =head1 变量
 
-=head1 Variables
-
-=head2 类型
-
-=head2 Datatypes
-
-Perl has three typedefs that handle Perl's three main data types:
+=head2 数据类型
 
 Perl有三种typedef定义，用于处理Perl的三种主要数据类型。
 
-* SV Scalar Value
-* AV Array Value
-* HV Hash Value
+    SV Scalar Value
+    AV Array Value
+    HV Hash Value
 
-Each typedef has specific routines that manipulate the various data types.
-
-每种类型都有相应的数据管理方式。
+每种typedef都有相应的数据管理例程。
 
 =head2 什么是"IV"?
 
-=head2 What is an "IV"?
-
-Perl uses a special typedef IV which is a simple signed integer type that is
-guaranteed to be large enough to hold a pointer (as well as an integer).
-Additionally, there is the UV, which is simply an unsigned IV.
-
 Perl使用typedef:'IV'(一个有符号整型，空间足以保存一个指针)。另外还有typedef:'UV'(一个无符号的'IV')。
 
-Perl also uses two special typedefs, I32 and I16, which will always be at
-least 32-bits and 16-bits long, respectively. (Again, there are U32 and U16,
-as well.)  They will usually be exactly 32 and 16 bits long, but on Crays
-they will both be 64 bits.
-
-Perl同样适用I32和I16两个typedef，通常至少有32位或16位长(同样也有U32和U64)。但是在Crays上，它们都是64位。
+Perl同样适用I32和I16两个特殊的typedef，通常至少有32位或16位长(同样也有U32和U64)。但是在Crays上，它们都是64位。
 
 =head2 使用SV
 
-=head2 Working with SVs
-
-An SV can be created and loaded with one command.  There are five types of
-values that can be loaded: an integer value (IV), an unsigned integer
-value (UV), a double (NV), a string (PV), and another scalar (SV).
-("PV" stands for "Pointer Value".  You might think that it is misnamed
-because it is described as pointing only to strings.  However, it is
-possible to have it point to other things.  For example, inversion
-lists, used in regular expression data structures, are scalars, each
-consisting of an array of UVs which are accessed through PVs.  But,
-using it for non-strings requires care, as the underlying assumption of
-much of the internals is that PVs are just for strings.  Often, for
-example, a trailing NUL is tacked on automatically.  The non-string use
-is documented only in this paragraph.)
-
-一个SV可以用一条指令创建和加载。有五种类型的值可以被加载：整型值(IV)，无符号整型值(UV)，double(NV)，
-字符串(PV)以及另一个scalar(SV)。("PV"代表"指针值",你也许认为这样的名字有误导性因为它被描述为一个指向字符串的指针。
-然而它实际上可以指向其它类型的数据。例如，反向列表被用于正则表达式的数据结构中，就是scalars，每一个成员都包含一个通过PV访问的UV数组。
+一个SV可以用一条指令创建并加载。有五种类型的值可以被加载：整型值(IV)，无符号整型值(UV)，双精度浮点型(NV)，
+字符串(PV)以及另一个scalar(SV)。("PV"代表"指针值",你也许认为这里用错了名字，因为它被描述为一个指向字符串的指针。
+然而它实际上可以指向其它类型的数据。例如，被用于正则表达式的数据结构中的反向列表就是一堆scalar，每一个都包含一个通过PV访问的UV数组。
 但是将PV用于字符串之外的地方需要特别小心，因为很多内部的封装都假设PV是用于字符串的。非字符串的应用文档中只在此处提及。)
 
-The seven routines are:
-
-这七种操作如下：
+这七个例程如下：
 
     SV*  newSViv(IV);
     SV*  newSVuv(UV);
@@ -80,24 +42,14 @@ The seven routines are:
     SV*  newSVpvf(const char*, ...);
     SV*  newSVsv(SV*);
 
-C<STRLEN\> is an integer type (Size\_t, usually defined as size_t in
-F<config.h>) guaranteed to be large enough to represent the size of
-any string that perl can handle.
+C<STRLEN>是整型(Size_t, 通常在config.h文件中被定义为size_t)，保证足够大以容纳任何perl可以处理的字符串的长度。
 
-STRLEN 是整型(Size_t, 通常在config.h文件中被定义为size_t)，保证足够大以容纳任何perl可以处理的字符串的长度。
+在一些不太可能发生的场景中SV需要更加复杂的初始化方式，你可以用newSV(len)创建一个空的SV。
+如果len为0，一个类型为NULL的空SV将会返回，否则一个PV类型的的内存分配大小为len+1字节且内容都为NULL的SV将会返回，
+可以通过SvPVX访问。在以上两种场景中SV的值都是undef。
 
-In the unlikely case of a SV requiring more complex initialisation, you
-can create an empty SV with newSV(len).  If C<len> is 0 an empty SV of
-type NULL is returned, else an SV of type PV is returned with len + 1 (for
-the NUL) bytes of storage allocated, accessible via SvPVX.  In both cases
-the SV has the undef value.
-
-在一些不太可能发生的场景中SV需要更加复杂的初始化方式，你可以用newSV(len)创建一个空的SV。如果len为0，一个类型为NULL的空SV将会返回，否则一个类型为PV的SV将会返回，并分配长度为len+1字节且值为NULL的内存空间，可以通过SvPVX访问。在以上两种场景中SV的值都是undef。
-
-    SV *sv = newSV(0);   /* no storage allocated  */
-    SV *sv = newSV(10);  /* 10 (+1) bytes of uninitialised storage
-                            allocated */
-To change the value of an I<already-existing\> SV, there are eight routines:
+    SV *sv = newSV(0);   /* 不分配内存  */
+    SV *sv = newSV(10);  /* 10 (+1) 字节未初始化的内存将本分配 */
 
 有八种操作用于改变（已存在的）SV的值。
 
@@ -110,20 +62,11 @@ To change the value of an I<already-existing\> SV, there are eight routines:
     void  sv_vsetpvfn(SV*, const char*, STRLEN, va_list *, SV **, I32, bool *);
     void  sv_setsv(SV*, SV*);
 
-Notice that you can choose to specify the length of the string to be
-assigned by using C<sv_setpvn>, C<newSVpvn>, or C<newSVpv>, or you may
-allow Perl to calculate the length by using C<sv_setpv> or by specifying
-0 as the second argument to C<newSVpv>.  Be warned, though, that Perl will
-determine the string's length by using C<strlen>, which depends on the
-string terminating with a NUL character, and not otherwise containing
-NULs.
+注意：你可以使用C<sv_setpvn>，C<newSVpvn>或C<newSVpv>设置传入字符串的长度，
+也可以用C<sv_setpv>或C<newSVpv>（第二个参数传0）让Perl自己计算字符串的长度，
+Perl会使用C<strlen>来获取字符串的长度，因此你传入的字符串必须以NUL结尾，且中间不能包含NUL。
 
-注意：你可以使用sv\_setpvn，newSVpvn，或newSVpv设置传入字符串的长度，也可以用sv_setpv或newSVpn（第二个参数传0）让Perl自己计算字符串的长度，Perl会使用strlen来获取字符串的长度，因此你传入的字符串必须以NUL结尾，且中间不能包含NUL。
-
-The arguments of C<sv_setpvf> are processed like C<sprintf>, and the
-formatted output becomes the value.
-
-sv_setpvf参数的处理类似于sprintf，格式化后的数据将被赋予SV*。
+C<sv_setpvf>参数的处理类似于C<sprintf>，格式化后的输出将被赋予SV*。
 
 C<sv_vsetpvfn> is an analogue of C<vsprintf>, but it allows you to specify
 either a pointer to a variable argument list or the address and length of
