@@ -2160,10 +2160,10 @@ Perl 5.16.0恢复了$AUTOLOAD的设置。如果你需要支持5.18-5.14，使用
 
 =head2 Calling Perl Routines from within C Programs
 
-有四个函数可以用来从C程序中调用Perl函数。这四个分别为：
-
 There are four routines that can be used to call a Perl subroutine from
 within a C program.  These four are:
+
+有四个函数可以用来从C程序中调用Perl函数。这四个分别为：
 
     I32  call_sv(SV*, I32);
     I32  call_pv(const char*, I32);
@@ -2177,16 +2177,25 @@ that control the context in which the subroutine is called, whether
 or not the subroutine is being passed arguments, how errors should be
 trapped, and how to treat return values.
 
+最常用的函数是C<call_sv>。C<SV*>参数包含了需要调用的Perl函数的函数名或是函数引用。
+第二个参数是控制被调用函数上下文的标记，比如这个函数有没有参数，错误应该如何处理以及如何处理返回值。
+
 All four routines return the number of arguments that the subroutine returned
 on the Perl stack.
+
+所有的函数都返回perl函数返回到Perl栈上的参数的个数。
 
 These routines used to be called C<perl_call_sv>, etc., before Perl v5.6.0,
 but those names are now deprecated; macros of the same name are provided for
 compatibility.
 
+在perl5.6.0之前，这些函数曾经被成为C<perl_call_sv>等等。但是这些名字现在废弃了；并且提供了同名的宏以保持兼容。
+
 When using any of these routines (except C<call_argv>), the programmer
 must manipulate the Perl stack.  These include the following macros and
 functions:
+
+使用任何这些函数时（除了C<call_argv>），程序员必须管理Perl的栈。包括以下宏和函数。
 
     dSP
     SP
@@ -2203,7 +2212,13 @@ functions:
 For a detailed description of calling conventions from C to Perl,
 consult L<perlcall>.
 
+请参见L<perlcall>以获得更多关于用C调用Perl函数的规则。
+
+=head2 内存分配
+
 =head2 Memory Allocation
+
+=head3 分配
 
 =head3 Allocation
 
@@ -2212,12 +2227,19 @@ using the macros described in this section.  The macros provide the necessary
 transparency between differences in the actual malloc implementation that is
 used within perl.
 
+当使用Perl API函数时所有的内存管理都必须通过该节定义的宏进行。这些宏对Perl内部内存分配实现上的不同提供了封装。
+
 It is suggested that you enable the version of malloc that is distributed
 with Perl.  It keeps pools of various sizes of unallocated memory in
 order to satisfy allocation requests more quickly.  However, on some
 platforms, it may cause spurious malloc or free errors.
 
+推荐打开随Perl发布的malloc版本。其将会管理各种大小未分配的内存块以更快得满足内存分配的需要。
+然而在某些平台它会导致虚假的分配和释放错误。
+
 The following three macros are used to initially allocate memory :
+
+一下三个宏用于初始化分配的内存：
 
     Newx(pointer, number, type);
     Newxc(pointer, number, type, cast);
@@ -2226,14 +2248,23 @@ The following three macros are used to initially allocate memory :
 The first argument C<pointer> should be the name of a variable that will
 point to the newly allocated memory.
 
+第一个参数C<pointer>应该为指向最新分配内存的变量的名称。
+
 The second and third arguments C<number> and C<type> specify how many of
 the specified type of data structure should be allocated.  The argument
 C<type> is passed to C<sizeof>.  The final argument to C<Newxc>, C<cast>,
 should be used if the C<pointer> argument is different from the C<type>
 argument.
 
+第二个和第三个参数C<number>和C<type>表明多少个指定类型的内存需要分配。C<type>参数将被传给C<sizeof>。
+C<Newxc>的最后一个参数C<cast>在C<pointer>参数和C<type>参数不同的时候将被使用。
+
 Unlike the C<Newx> and C<Newxc> macros, the C<Newxz> macro calls C<memzero>
 to zero out all the newly allocated memory.
+
+和C<Newx>和C<Newxc>不同的是C<Newxz>宏调用C<memzero>将所有新分配内存清0。
+
+=head3 再分配
 
 =head3 Reallocation
 
@@ -2246,7 +2277,13 @@ piece of memory no longer needed.  The arguments to C<Renew> and C<Renewc>
 match those of C<New> and C<Newc> with the exception of not needing the
 "magic cookie" argument.
 
+这三个宏被用于改变一块内存缓冲区的大小或释放不再需要的内存。C<Renew>和C<Renewc>的参数
+匹配C<New>和C<NewC>，除了不许要"魔法cookie"以外。
+
+=head3 移动
+
 =head3 Moving
+
 
     Move(source, dest, number, type);
     Copy(source, dest, number, type);
@@ -2258,6 +2295,10 @@ destination starting points.  Perl will move, copy, or zero out C<number>
 instances of the size of the C<type> data structure (using the C<sizeof>
 function).
 
+这三个宏被用于移动，拷贝或清零之前分配的内存。C<source>和C<dest>参数指向了起始指针的源和目的地址。
+Perl将会移动，拷贝或清零C<number>快和C<type>大小一致的内存区域。
+
+=head2 PerlIO
 =head2 PerlIO
 
 The most recent development releases of Perl have been experimenting with
@@ -2268,8 +2309,14 @@ was compiled with.  All XSUBs should now use the functions in the PerlIO
 abstraction layer and not make any assumptions about what kind of stdio
 is being used.
 
+最近开发的Perl版本开始移除Perl对"普通"的标准I/O实现的依赖（实验性地）并允使用许其他标准io实现。
+这导致了实现一个抽象层然后再调用具体被编译的标准io。所有的XSUB函数都应该使用PerlIO抽象层，而不应该对具体使用的标准IO做任何假设。
+
 For a complete description of the PerlIO abstraction, consult L<perlapio>.
 
+对PerlIO抽象层的完整描述请参考L<perlapio>。
+
+=head2 向Perl栈上放置一个C值 
 =head2 Putting a C value on Perl stack
 
 A lot of opcodes (this is an elementary operation in the internal perl
@@ -2278,17 +2325,624 @@ the corresponding SV is (usually) not recreated each time. The opcodes
 reuse specially assigned SVs (I<target>s) which are (as a corollary)
 not constantly freed/created.
 
+很多opcodes（在Perl内部的栈机器中这算是一个基本操作）会将一个SV*放置到栈上。
+然而，作为一种优化，相应的SV（通常）不会每次都重复创建。opcodes会重用那些不会经常创建或释放的SV们（I<target>s）
+
 Each of the targets is created only once (but see
 L<Scratchpads and recursion> below), and when an opcode needs to put
 an integer, a double, or a string on stack, it just sets the
 corresponding parts of its I<target> and puts the I<target> on stack.
 
+每一个目标只会创建一次（请看下面的L<暂存器与递归>一节），当一个opcode需要向栈上放置一个整形，双精度浮点型或字符串时，
+它仅需要设置它I<target>的相应部分并将I<target>放置到栈上。
+
 The macro to put this target on stack is C<PUSHTARG>, and it is
 directly used in some opcodes, as well as indirectly in zillions of
 others, which use it via C<(X)PUSH[iunp]>.
 
+向栈上放置target的宏是C<PUSHTARG>，一些opcodes之间使用了这个宏，同样还有很多通过C<(X)PUSH[iump]>间接使用的例子。
+
 Because the target is reused, you must be careful when pushing multiple
 values on the stack. The following code will not do what you think:
 
+由于target被重用，当你需要往栈上压多个值的时候必须小心。一下代码不会以你想象地那样工作：
+
     XPUSHi(10);
     XPUSHi(20);
+
+This translates as "set C<TARG> to 10, push a pointer to C<TARG> onto
+the stack; set C<TARG> to 20, push a pointer to C<TARG> onto the stack".
+At the end of the operation, the stack does not contain the values 10
+and 20, but actually contains two pointers to C<TARG>, which we have set
+to 20.
+
+If you need to push multiple different values then you should either use
+the C<(X)PUSHs> macros, or else use the new C<m(X)PUSH[iunp]> macros,
+none of which make use of C<TARG>.  The C<(X)PUSHs> macros simply push an
+SV* on the stack, which, as noted under L</XSUBs and the Argument Stack>,
+will often need to be "mortal".  The new C<m(X)PUSH[iunp]> macros make
+this a little easier to achieve by creating a new mortal for you (via
+C<(X)PUSHmortal>), pushing that onto the stack (extending it if necessary
+in the case of the C<mXPUSH[iunp]> macros), and then setting its value.
+Thus, instead of writing this to "fix" the example above:
+
+    XPUSHs(sv_2mortal(newSViv(10)))
+    XPUSHs(sv_2mortal(newSViv(20)))
+
+you can simply write:
+
+    mXPUSHi(10)
+    mXPUSHi(20)
+
+On a related note, if you do use C<(X)PUSH[iunp]>, then you're going to
+need a C<dTARG> in your variable declarations so that the C<*PUSH*>
+macros can make use of the local variable C<TARG>.  See also C<dTARGET>
+and C<dXSTARG>.
+
+=head2 Scratchpads
+
+The question remains on when the SVs which are I<target>s for opcodes
+are created. The answer is that they are created when the current
+unit--a subroutine or a file (for opcodes for statements outside of
+subroutines)--is compiled. During this time a special anonymous Perl
+array is created, which is called a scratchpad for the current unit.
+
+A scratchpad keeps SVs which are lexicals for the current unit and are
+targets for opcodes. One can deduce that an SV lives on a scratchpad
+by looking on its flags: lexicals have C<SVs_PADMY> set, and
+I<target>s have C<SVs_PADTMP> set.
+
+The correspondence between OPs and I<target>s is not 1-to-1. Different
+OPs in the compile tree of the unit can use the same target, if this
+would not conflict with the expected life of the temporary.
+
+=head2 Scratchpads and recursion
+
+In fact it is not 100% true that a compiled unit contains a pointer to
+the scratchpad AV. In fact it contains a pointer to an AV of
+(initially) one element, and this element is the scratchpad AV. Why do
+we need an extra level of indirection?
+
+The answer is B<recursion>, and maybe B<threads>. Both
+these can create several execution pointers going into the same
+subroutine. For the subroutine-child not write over the temporaries
+for the subroutine-parent (lifespan of which covers the call to the
+child), the parent and the child should have different
+scratchpads. (I<And> the lexicals should be separate anyway!)
+
+So each subroutine is born with an array of scratchpads (of length 1).
+On each entry to the subroutine it is checked that the current
+depth of the recursion is not more than the length of this array, and
+if it is, new scratchpad is created and pushed into the array.
+
+The I<target>s on this scratchpad are C<undef>s, but they are already
+marked with correct flags.
+
+=head1 Compiled code
+
+=head2 Code tree
+
+Here we describe the internal form your code is converted to by
+Perl. Start with a simple example:
+
+  $a = $b + $c;
+
+This is converted to a tree similar to this one:
+
+             assign-to
+           /           \
+          +             $a
+        /   \
+      $b     $c
+
+(but slightly more complicated).  This tree reflects the way Perl
+parsed your code, but has nothing to do with the execution order.
+There is an additional "thread" going through the nodes of the tree
+which shows the order of execution of the nodes.  In our simplified
+example above it looks like:
+
+     $b ---> $c ---> + ---> $a ---> assign-to
+
+But with the actual compile tree for C<$a = $b + $c> it is different:
+some nodes I<optimized away>.  As a corollary, though the actual tree
+contains more nodes than our simplified example, the execution order
+is the same as in our example.
+
+=head2 Examining the tree
+
+If you have your perl compiled for debugging (usually done with
+C<-DDEBUGGING> on the C<Configure> command line), you may examine the
+compiled tree by specifying C<-Dx> on the Perl command line.  The
+output takes several lines per node, and for C<$b+$c> it looks like
+this:
+
+    5           TYPE = add  ===> 6
+                TARG = 1
+                FLAGS = (SCALAR,KIDS)
+                {
+                    TYPE = null  ===> (4)
+                      (was rv2sv)
+                    FLAGS = (SCALAR,KIDS)
+                    {
+    3                   TYPE = gvsv  ===> 4
+                        FLAGS = (SCALAR)
+                        GV = main::b
+                    }
+                }
+                {
+                    TYPE = null  ===> (5)
+                      (was rv2sv)
+                    FLAGS = (SCALAR,KIDS)
+                    {
+    4                   TYPE = gvsv  ===> 5
+                        FLAGS = (SCALAR)
+                        GV = main::c
+                    }
+                }
+
+This tree has 5 nodes (one per C<TYPE> specifier), only 3 of them are
+not optimized away (one per number in the left column).  The immediate
+children of the given node correspond to C<{}> pairs on the same level
+of indentation, thus this listing corresponds to the tree:
+
+                   add
+                 /     \
+               null    null
+                |       |
+               gvsv    gvsv
+
+The execution order is indicated by C<===E<gt>> marks, thus it is C<3
+4 5 6> (node C<6> is not included into above listing), i.e.,
+C<gvsv gvsv add whatever>.
+
+Each of these nodes represents an op, a fundamental operation inside the
+Perl core. The code which implements each operation can be found in the
+F<pp*.c> files; the function which implements the op with type C<gvsv>
+is C<pp_gvsv>, and so on. As the tree above shows, different ops have
+different numbers of children: C<add> is a binary operator, as one would
+expect, and so has two children. To accommodate the various different
+numbers of children, there are various types of op data structure, and
+they link together in different ways.
+
+The simplest type of op structure is C<OP>: this has no children. Unary
+operators, C<UNOP>s, have one child, and this is pointed to by the
+C<op_first> field. Binary operators (C<BINOP>s) have not only an
+C<op_first> field but also an C<op_last> field. The most complex type of
+op is a C<LISTOP>, which has any number of children. In this case, the
+first child is pointed to by C<op_first> and the last child by
+C<op_last>. The children in between can be found by iteratively
+following the C<op_sibling> pointer from the first child to the last.
+
+There are also two other op types: a C<PMOP> holds a regular expression,
+and has no children, and a C<LOOP> may or may not have children. If the
+C<op_children> field is non-zero, it behaves like a C<LISTOP>. To
+complicate matters, if a C<UNOP> is actually a C<null> op after
+optimization (see L</Compile pass 2: context propagation>) it will still
+have children in accordance with its former type.
+
+Another way to examine the tree is to use a compiler back-end module, such
+as L<B::Concise>.
+
+=head2 Compile pass 1: check routines
+
+The tree is created by the compiler while I<yacc> code feeds it
+the constructions it recognizes. Since I<yacc> works bottom-up, so does
+the first pass of perl compilation.
+
+What makes this pass interesting for perl developers is that some
+optimization may be performed on this pass.  This is optimization by
+so-called "check routines".  The correspondence between node names
+and corresponding check routines is described in F<opcode.pl> (do not
+forget to run C<make regen_headers> if you modify this file).
+
+A check routine is called when the node is fully constructed except
+for the execution-order thread.  Since at this time there are no
+back-links to the currently constructed node, one can do most any
+operation to the top-level node, including freeing it and/or creating
+new nodes above/below it.
+
+The check routine returns the node which should be inserted into the
+tree (if the top-level node was not modified, check routine returns
+its argument).
+
+By convention, check routines have names C<ck_*>. They are usually
+called from C<new*OP> subroutines (or C<convert>) (which in turn are
+called from F<perly.y>).
+
+=head2 Compile pass 1a: constant folding
+
+Immediately after the check routine is called the returned node is
+checked for being compile-time executable.  If it is (the value is
+judged to be constant) it is immediately executed, and a I<constant>
+node with the "return value" of the corresponding subtree is
+substituted instead.  The subtree is deleted.
+
+If constant folding was not performed, the execution-order thread is
+created.
+
+=head2 Compile pass 2: context propagation
+
+When a context for a part of compile tree is known, it is propagated
+down through the tree.  At this time the context can have 5 values
+(instead of 2 for runtime context): void, boolean, scalar, list, and
+lvalue.  In contrast with the pass 1 this pass is processed from top
+to bottom: a node's context determines the context for its children.
+
+Additional context-dependent optimizations are performed at this time.
+Since at this moment the compile tree contains back-references (via
+"thread" pointers), nodes cannot be free()d now.  To allow
+optimized-away nodes at this stage, such nodes are null()ified instead
+of free()ing (i.e. their type is changed to OP_NULL).
+
+=head2 Compile pass 3: peephole optimization
+
+After the compile tree for a subroutine (or for an C<eval> or a file)
+is created, an additional pass over the code is performed. This pass
+is neither top-down or bottom-up, but in the execution order (with
+additional complications for conditionals).  Optimizations performed
+at this stage are subject to the same restrictions as in the pass 2.
+
+Peephole optimizations are done by calling the function pointed to
+by the global variable C<PL_peepp>.  By default, C<PL_peepp> just
+calls the function pointed to by the global variable C<PL_rpeepp>.
+By default, that performs some basic op fixups and optimisations along
+the execution-order op chain, and recursively calls C<PL_rpeepp> for
+each side chain of ops (resulting from conditionals).  Extensions may
+provide additional optimisations or fixups, hooking into either the
+per-subroutine or recursive stage, like this:
+
+    static peep_t prev_peepp;
+    static void my_peep(pTHX_ OP *o)
+    {
+        /* custom per-subroutine optimisation goes here */
+        prev_peepp(aTHX_ o);
+        /* custom per-subroutine optimisation may also go here */
+    }
+    BOOT:
+        prev_peepp = PL_peepp;
+        PL_peepp = my_peep;
+
+    static peep_t prev_rpeepp;
+    static void my_rpeep(pTHX_ OP *o)
+    {
+        OP *orig_o = o;
+        for(; o; o = o->op_next) {
+            /* custom per-op optimisation goes here */
+        }
+        prev_rpeepp(aTHX_ orig_o);
+    }
+    BOOT:
+        prev_rpeepp = PL_rpeepp;
+        PL_rpeepp = my_rpeep;
+
+=head2 Pluggable runops
+
+The compile tree is executed in a runops function.  There are two runops
+functions, in F<run.c> and in F<dump.c>.  C<Perl_runops_debug> is used
+with DEBUGGING and C<Perl_runops_standard> is used otherwise.  For fine
+control over the execution of the compile tree it is possible to provide
+your own runops function.
+
+It's probably best to copy one of the existing runops functions and
+change it to suit your needs.  Then, in the BOOT section of your XS
+file, add the line:
+
+  PL_runops = my_runops;
+
+This function should be as efficient as possible to keep your programs
+running as fast as possible.
+
+=head2 Compile-time scope hooks
+
+As of perl 5.14 it is possible to hook into the compile-time lexical
+scope mechanism using C<Perl_blockhook_register>. This is used like
+this:
+
+    STATIC void my_start_hook(pTHX_ int full);
+    STATIC BHK my_hooks;
+
+    BOOT:
+        BhkENTRY_set(&my_hooks, bhk_start, my_start_hook);
+        Perl_blockhook_register(aTHX_ &my_hooks);
+
+This will arrange to have C<my_start_hook> called at the start of
+compiling every lexical scope. The available hooks are:
+
+=over 4
+
+=item C<void bhk_start(pTHX_ int full)>
+
+This is called just after starting a new lexical scope. Note that Perl
+code like
+
+    if ($x) { ... }
+
+creates two scopes: the first starts at the C<(> and has C<full == 1>,
+the second starts at the C<{> and has C<full == 0>. Both end at the
+C<}>, so calls to C<start> and C<pre/post_end> will match. Anything
+pushed onto the save stack by this hook will be popped just before the
+scope ends (between the C<pre_> and C<post_end> hooks, in fact).
+
+=item C<void bhk_pre_end(pTHX_ OP **o)>
+
+This is called at the end of a lexical scope, just before unwinding the
+stack. I<o> is the root of the optree representing the scope; it is a
+double pointer so you can replace the OP if you need to.
+
+=item C<void bhk_post_end(pTHX_ OP **o)>
+
+This is called at the end of a lexical scope, just after unwinding the
+stack. I<o> is as above. Note that it is possible for calls to C<pre_>
+and C<post_end> to nest, if there is something on the save stack that
+calls string eval.
+
+=item C<void bhk_eval(pTHX_ OP *const o)>
+
+This is called just before starting to compile an C<eval STRING>, C<do
+FILE>, C<require> or C<use>, after the eval has been set up. I<o> is the
+OP that requested the eval, and will normally be an C<OP_ENTEREVAL>,
+C<OP_DOFILE> or C<OP_REQUIRE>.
+
+=back
+
+Once you have your hook functions, you need a C<BHK> structure to put
+them in. It's best to allocate it statically, since there is no way to
+free it once it's registered. The function pointers should be inserted
+into this structure using the C<BhkENTRY_set> macro, which will also set
+flags indicating which entries are valid. If you do need to allocate
+your C<BHK> dynamically for some reason, be sure to zero it before you
+start.
+
+Once registered, there is no mechanism to switch these hooks off, so if
+that is necessary you will need to do this yourself. An entry in C<%^H>
+is probably the best way, so the effect is lexically scoped; however it
+is also possible to use the C<BhkDISABLE> and C<BhkENABLE> macros to
+temporarily switch entries on and off. You should also be aware that
+generally speaking at least one scope will have opened before your
+extension is loaded, so you will see some C<pre/post_end> pairs that
+didn't have a matching C<start>.
+
+=head1 Examining internal data structures with the C<dump> functions
+
+To aid debugging, the source file F<dump.c> contains a number of
+functions which produce formatted output of internal data structures.
+
+The most commonly used of these functions is C<Perl_sv_dump>; it's used
+for dumping SVs, AVs, HVs, and CVs. The C<Devel::Peek> module calls
+C<sv_dump> to produce debugging output from Perl-space, so users of that
+module should already be familiar with its format.
+
+C<Perl_op_dump> can be used to dump an C<OP> structure or any of its
+derivatives, and produces output similar to C<perl -Dx>; in fact,
+C<Perl_dump_eval> will dump the main root of the code being evaluated,
+exactly like C<-Dx>.
+
+Other useful functions are C<Perl_dump_sub>, which turns a C<GV> into an
+op tree, C<Perl_dump_packsubs> which calls C<Perl_dump_sub> on all the
+subroutines in a package like so: (Thankfully, these are all xsubs, so
+there is no op tree)
+
+    (gdb) print Perl_dump_packsubs(PL_defstash)
+
+    SUB attributes::bootstrap = (xsub 0x811fedc 0)
+
+    SUB UNIVERSAL::can = (xsub 0x811f50c 0)
+
+    SUB UNIVERSAL::isa = (xsub 0x811f304 0)
+
+    SUB UNIVERSAL::VERSION = (xsub 0x811f7ac 0)
+
+    SUB DynaLoader::boot_DynaLoader = (xsub 0x805b188 0)
+
+and C<Perl_dump_all>, which dumps all the subroutines in the stash and
+the op tree of the main root.
+
+=head1 How multiple interpreters and concurrency are supported
+
+=head2 Background and PERL_IMPLICIT_CONTEXT
+
+The Perl interpreter can be regarded as a closed box: it has an API
+for feeding it code or otherwise making it do things, but it also has
+functions for its own use.  This smells a lot like an object, and
+there are ways for you to build Perl so that you can have multiple
+interpreters, with one interpreter represented either as a C structure,
+or inside a thread-specific structure.  These structures contain all
+the context, the state of that interpreter.
+
+One macro controls the major Perl build flavor: MULTIPLICITY. The
+MULTIPLICITY build has a C structure that packages all the interpreter
+state. With multiplicity-enabled perls, PERL_IMPLICIT_CONTEXT is also
+normally defined, and enables the support for passing in a "hidden" first
+argument that represents all three data structures. MULTIPLICITY makes
+multi-threaded perls possible (with the ithreads threading model, related
+to the macro USE_ITHREADS.)
+
+Two other "encapsulation" macros are the PERL_GLOBAL_STRUCT and
+PERL_GLOBAL_STRUCT_PRIVATE (the latter turns on the former, and the
+former turns on MULTIPLICITY.)  The PERL_GLOBAL_STRUCT causes all the
+internal variables of Perl to be wrapped inside a single global struct,
+struct perl_vars, accessible as (globals) &PL_Vars or PL_VarsPtr or
+the function  Perl_GetVars().  The PERL_GLOBAL_STRUCT_PRIVATE goes
+one step further, there is still a single struct (allocated in main()
+either from heap or from stack) but there are no global data symbols
+pointing to it.  In either case the global struct should be initialised
+as the very first thing in main() using Perl_init_global_struct() and
+correspondingly tear it down after perl_free() using Perl_free_global_struct(),
+please see F<miniperlmain.c> for usage details.  You may also need
+to use C<dVAR> in your coding to "declare the global variables"
+when you are using them.  dTHX does this for you automatically.
+
+To see whether you have non-const data you can use a BSD-compatible C<nm>:
+
+  nm libperl.a | grep -v ' [TURtr] '
+
+If this displays any C<D> or C<d> symbols, you have non-const data.
+
+For backward compatibility reasons defining just PERL_GLOBAL_STRUCT
+doesn't actually hide all symbols inside a big global struct: some
+PerlIO_xxx vtables are left visible.  The PERL_GLOBAL_STRUCT_PRIVATE
+then hides everything (see how the PERLIO_FUNCS_DECL is used).
+
+All this obviously requires a way for the Perl internal functions to be
+either subroutines taking some kind of structure as the first
+argument, or subroutines taking nothing as the first argument.  To
+enable these two very different ways of building the interpreter,
+the Perl source (as it does in so many other situations) makes heavy
+use of macros and subroutine naming conventions.
+
+First problem: deciding which functions will be public API functions and
+which will be private.  All functions whose names begin C<S_> are private
+(think "S" for "secret" or "static").  All other functions begin with
+"Perl_", but just because a function begins with "Perl_" does not mean it is
+part of the API. (See L</Internal Functions>.) The easiest way to be B<sure> a
+function is part of the API is to find its entry in L<perlapi>.
+If it exists in L<perlapi>, it's part of the API.  If it doesn't, and you
+think it should be (i.e., you need it for your extension), send mail via
+L<perlbug> explaining why you think it should be.
+
+Second problem: there must be a syntax so that the same subroutine
+declarations and calls can pass a structure as their first argument,
+or pass nothing.  To solve this, the subroutines are named and
+declared in a particular way.  Here's a typical start of a static
+function used within the Perl guts:
+
+  STATIC void
+  S_incline(pTHX_ char *s)
+
+STATIC becomes "static" in C, and may be #define'd to nothing in some
+configurations in the future.
+
+A public function (i.e. part of the internal API, but not necessarily
+sanctioned for use in extensions) begins like this:
+
+  void
+  Perl_sv_setiv(pTHX_ SV* dsv, IV num)
+
+C<pTHX_> is one of a number of macros (in F<perl.h>) that hide the
+details of the interpreter's context.  THX stands for "thread", "this",
+or "thingy", as the case may be.  (And no, George Lucas is not involved. :-)
+The first character could be 'p' for a B<p>rototype, 'a' for B<a>rgument,
+or 'd' for B<d>eclaration, so we have C<pTHX>, C<aTHX> and C<dTHX>, and
+their variants.
+
+When Perl is built without options that set PERL_IMPLICIT_CONTEXT, there is no
+first argument containing the interpreter's context.  The trailing underscore
+in the pTHX_ macro indicates that the macro expansion needs a comma
+after the context argument because other arguments follow it.  If
+PERL_IMPLICIT_CONTEXT is not defined, pTHX_ will be ignored, and the
+subroutine is not prototyped to take the extra argument.  The form of the
+macro without the trailing underscore is used when there are no additional
+explicit arguments.
+
+When a core function calls another, it must pass the context.  This
+is normally hidden via macros.  Consider C<sv_setiv>.  It expands into
+something like this:
+
+    #ifdef PERL_IMPLICIT_CONTEXT
+      #define sv_setiv(a,b)      Perl_sv_setiv(aTHX_ a, b)
+      /* can't do this for vararg functions, see below */
+    #else
+      #define sv_setiv           Perl_sv_setiv
+    #endif
+
+This works well, and means that XS authors can gleefully write:
+
+    sv_setiv(foo, bar);
+
+and still have it work under all the modes Perl could have been
+compiled with.
+
+This doesn't work so cleanly for varargs functions, though, as macros
+imply that the number of arguments is known in advance.  Instead we
+either need to spell them out fully, passing C<aTHX_> as the first
+argument (the Perl core tends to do this with functions like
+Perl_warner), or use a context-free version.
+
+The context-free version of Perl_warner is called
+Perl_warner_nocontext, and does not take the extra argument.  Instead
+it does dTHX; to get the context from thread-local storage.  We
+C<#define warner Perl_warner_nocontext> so that extensions get source
+compatibility at the expense of performance.  (Passing an arg is
+cheaper than grabbing it from thread-local storage.)
+
+You can ignore [pad]THXx when browsing the Perl headers/sources.
+Those are strictly for use within the core.  Extensions and embedders
+need only be aware of [pad]THX.
+
+=head2 So what happened to dTHR?
+
+C<dTHR> was introduced in perl 5.005 to support the older thread model.
+The older thread model now uses the C<THX> mechanism to pass context
+pointers around, so C<dTHR> is not useful any more.  Perl 5.6.0 and
+later still have it for backward source compatibility, but it is defined
+to be a no-op.
+
+=head2 How do I use all this in extensions?
+
+When Perl is built with PERL_IMPLICIT_CONTEXT, extensions that call
+any functions in the Perl API will need to pass the initial context
+argument somehow.  The kicker is that you will need to write it in
+such a way that the extension still compiles when Perl hasn't been
+built with PERL_IMPLICIT_CONTEXT enabled.
+
+There are three ways to do this.  First, the easy but inefficient way,
+which is also the default, in order to maintain source compatibility
+with extensions: whenever F<XSUB.h> is #included, it redefines the aTHX
+and aTHX_ macros to call a function that will return the context.
+Thus, something like:
+
+        sv_setiv(sv, num);
+
+in your extension will translate to this when PERL_IMPLICIT_CONTEXT is
+in effect:
+
+        Perl_sv_setiv(Perl_get_context(), sv, num);
+
+or to this otherwise:
+
+        Perl_sv_setiv(sv, num);
+
+You don't have to do anything new in your extension to get this; since
+the Perl library provides Perl_get_context(), it will all just
+work.
+
+The second, more efficient way is to use the following template for
+your Foo.xs:
+
+        #define PERL_NO_GET_CONTEXT     /* we want efficiency */
+        #include "EXTERN.h"
+        #include "perl.h"
+        #include "XSUB.h"
+
+        STATIC void my_private_function(int arg1, int arg2);
+
+        STATIC void
+        my_private_function(int arg1, int arg2)
+        {
+            dTHX;       /* fetch context */
+            ... call many Perl API functions ...
+        }
+
+        [... etc ...]
+
+        MODULE = Foo            PACKAGE = Foo
+
+        /* typical XSUB */
+
+        void
+        my_xsub(arg)
+                int arg
+            CODE:
+                my_private_function(arg, 10);
+
+Note that the only two changes from the normal way of writing an
+extension is the addition of a C<#define PERL_NO_GET_CONTEXT> before
+including the Perl headers, followed by a C<dTHX;> declaration at
+the start of every function that will call the Perl API.  (You'll
+know which functions need this, because the C compiler will complain
+that there's an undeclared identifier in those functions.)  No changes
+are needed for the XSUBs themselves, because the XS() macro is
+correctly defined to pass in the implicit context if needed.
+
+The third, even more efficient way is to ape how it is done within
+the Perl guts:
