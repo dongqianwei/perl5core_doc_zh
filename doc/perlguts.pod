@@ -68,33 +68,13 @@ Perl会使用C<strlen>来获取字符串的长度，因此你传入的字符串�
 
 C<sv_setpvf>参数的处理类似于C<sprintf>，格式化后的输出将被赋予SV*。
 
-C<sv_vsetpvfn> is an analogue of C<vsprintf>, but it allows you to specify
-either a pointer to a variable argument list or the address and length of
-an array of SVs.  The last argument points to a boolean; on return, if that
-boolean is true, then locale-specific information has been used to format
-the string, and the string's contents are therefore untrustworthy (see
-L<perlsec>).  This pointer may be NULL if that information is not
-important.  Note that this function requires you to specify the length of
-the format.
+C<sv_vsetpvfn>与C<vsprintf>类似，但是它允许你指定一个指向参数列表的指针或者一个SV数组的地址和它的长度。
+最后一个参数指向一个boolean值；返回后，如果boolean为true，则地区设定识别码将被用于格式化字符串。
+因此该字符串的内容是不可信的（请参见L<perlsec>）。如果该信息不重要的话这个指针的值可以为NUL。注意该函数要求你提供格式的长度。
 
-sv_vsetpvfn与vsprintf相似，但是它允许你指定一个指向参数列表的指针或者一个SV数组的地址和它的长度。最后一个参数是指向一个boolean的地址；返回后，如果boolean为true，则本地化的信息将被用于格式化字符串。因此该字符串的内容是不可信的（参见perlsec）。如果该信息不重要的话这个指针的值可以为NUL。注意该函数要求你提供格式的长度。
+C<sv_set*()>系列函数在操作“有魔力的”值的时候并不通用。参见本文中L<魔法虚表> 一节。
 
-The C<sv_set*()> functions are not generic enough to operate on values
-that have "magic".  See L<Magic Virtual Tables> later in this document.
-
-sc_set*系列函数在操作“有魔力的”值的时候并不通用。参见本文中Magic Vitrual Table一节。
-
-All SVs that contain strings should be terminated with a NUL character.
-If it is not NUL-terminated there is a risk of
-core dumps and corruptions from code which passes the string to C
-functions or system calls which expect a NUL-terminated string.
-Perl's own functions typically add a trailing NUL for this reason.
-Nevertheless, you should be very careful when you pass a string stored
-in an SV to a C function or system call.
-
-所有包含字符串的SVs都应当以NUL结尾。如果不这样的话将会有将非NUL结尾字符串传入需要通过NUL判断字符串结束的C函数或系统调用从而导致进程崩溃从而核心转储的风险。Perl自己的函数一般都会因此添加一个尾部的NUL。当你将一个存在SV中的字符串传入C函数或系统调用的时候一定要万分小心。
-
-To access the actual value that an SV points to, you can use the macros:
+所有包含字符串的SV都应当以NUL结尾。如果不这样的话将会有将非NUL结尾字符串传入需要通过NUL判断字符串结束的C函数或系统调用从而导致进程崩溃风险。因此Perl自己的函数一般都会在尾部添加NUL。当你将一个存在SV中的字符串传入C函数或系统调用的时候一定要万分小心。
 
 为得到SV指向的真实值，你可以用以下宏：
 
@@ -104,25 +84,19 @@ To access the actual value that an SV points to, you can use the macros:
     SvPV(SV*, STRLEN len)
     SvPV_nolen(SV*)
 
-which will automatically coerce the actual scalar type into an IV, UV, double,
-or string.
-
 它们将把scalar类型自动转为IV，UV，double或字符串。
 
-In the C<SvPV> macro, the length of the string returned is placed into the
-variable C<len> (this is a macro, so you do I<not> use C<&len>).  If you do
-not care what the length of the data is, use the C<SvPV_nolen> macro.
-Historically the C<SvPV> macro with the global variable C<PL_na> has been
-used in this case.  But that can be quite inefficient because C<PL_na> must
-be accessed in thread-local storage in threaded Perl.  In any case, rememberthat Perl allows arbitrary strings of data that may both contain NULs and might not be terminated by a NUL.
-
-对于SvPV这个宏，返回字符串的长度将被存放于变量len中（这是一个宏，应此你不需要使用len的地址）。如果你不介意数据的长度，使用宏SvPV_nolen，历史上，SvPV宏结合PL_na全局变量被使用在该场景下。但是这样非常低效，因为PL_na的位置位于支持多线程的Perl中的线程专属内存中。请记住，在任何场景下Perl之支持包含NUL或不以NUL结尾的字符串。
+对于C<SvPV>这个宏，返回字符串的长度将被存放于变量C<len>中（这是一个宏，应此你不需要使用len的地址）。
+如果你不介意数据的长度，使用宏C<SvPV_nolen>，历史上，C<SvPV>宏结合C<PL_na>全局变量被使用在该场景下。
+但是这样非常低效，因为C<PL_na>的位置位于支持多线程的Perl中的线程专属内存中。
+请记住，在任何场景下Perl之支持包含NUL或不以NUL结尾的字符串。
 
 Also remember that C doesn't allow you to safely say C<foo(SvPV(s, len),
 len);>. It might work with your compiler, but it won't work for everyone.
 Break this sort of statement up into separate assignments:
 
-同时请记住C语言不允许你安全得使用foo(SvPV(s.len),len)。这样的用法可能对于你的编译器啃一正常编译，但不保证对所有人都适用。请将这种类型的语句拆分成多条赋值语句。
+同时请记住C语言不允许你安全得使用C<foo(SvPV(s, len)。这样的用法可能在你的编译器上可以正常编译，但不保证对所有人都适用。
+请将这种类型的语句拆分成多条赋值语句：
 
     SV *s;
     STRLEN len;
@@ -130,64 +104,40 @@ Break this sort of statement up into separate assignments:
     ptr = SvPV(s, len);
     foo(ptr, len);
 
-If you want to know if the scalar value is TRUE, you can use:
-
 如果你想知道某个scalar值是否为TRUE，你可以使用：
 
     SvTRUE(SV*)
-
-Although Perl will automatically grow strings for you, if you need to force
-Perl to allocate more memory for your SV, you can use the macro
 
 尽管Perl将会自动为你的字符串分配内存，但是如果你需要强制为SV分配更多的内存的话，使用宏：
 
     SvGROW(SV*, STRLEN newlen)
 
-which will determine if more memory needs to be allocated.  If so, it will
-call the function C<sv_grow>.  Note that C<SvGROW> can only increase, not
-decrease, the allocated memory of an SV and that it does not automatically
-add space for the trailing NUL byte (perl's own string functions typically do C<SvGROW(sv, len + 1)>).
+这将会检测是否需要分配更多的内存，如果是，它将会调用函数C<sv_grow>。
+请注意C<SvGROW>只会增加内存，且分配的内存不会自动在末尾添加NUL字节所占用的空间（perl内部一般都使用C<SvGROW(sv, len + 1)>）。
 
-这将会检测是否需要分配更多的内存，如果是，它将会调用函数sv_grow。请注意SvGROW只会增加内存，且分配的内存不会自动在末尾添加NUL字节（perl内部一般都使用 SvGROW(sv, len + 1)）。
-
-If you have an SV and want to know what kind of data Perl thinks is stored
-in it, you can use the following macros to check the type of SV you have.
-
-如果你想知道Perl认为一个SV中存储数据的的类型，可以使用如下的宏进行检查。
+如果你想知道Perl认为一个SV中存储数据的的类型，可以使用如下的宏进行检查：
 
     SvIOK(SV*)
     SvNOK(SV*)
     SvPOK(SV*)
 
-You can get and set the current length of the string stored in an SV with
-the following macros:
-
-你可以使用以下宏获取当前存储在SV中的字符串的长度。
+你可以使用以下宏获取当前存储在SV中的字符串的长度：
 
     SvCUR(SV*)
     SvCUR_set(SV*, I32 val)
 
-You can also get a pointer to the end of the string stored in the SV
-with the macro:
-
-你同样可以使用以下宏获取指向SV中字符串末尾的指针。
+你同样可以使用以下宏获取指向SV中字符串末尾的指针：
 
     SvEND(SV*)
 
-But note that these last three macros are valid only if C<SvPOK()> is true.
+但是请注意最后三个宏只有在C<SvPOK()>返回真的时候才能合法使用。
 
-但是请注意最后三个宏只有在SvPOK返回真的时候才能合法使用。
-
-If you want to append something to the end of string stored in an C<SV*>,
-you can use the following functions:
-
-如果你希望在SV*中储存的字符串后面添加数据，可以使用如下函数：
+如果你希望在C<SV*>中储存的字符串后面添加数据，可以使用如下函数：
 
     void  sv_catpv(SV*, const char*);
     void  sv_catpvn(SV*, const char*, STRLEN);
     void  sv_catpvf(SV*, const char*, ...);
-    void  sv_vcatpvfn(SV*, const char*, STRLEN, va_list *, SV **,
-                                                             I32, bool);
+    void  sv_vcatpvfn(SV*, const char*, STRLEN, va_list *, SV **, I32, bool);
     void  sv_catsv(SV*, SV*);
 
 The first function calculates the length of the string to be appended by
@@ -2288,7 +2238,7 @@ others, which use it via C<(X)PUSH[iunp]>.
 Because the target is reused, you must be careful when pushing multiple
 values on the stack. The following code will not do what you think:
 
-由于target被重用，当你需要往栈上压多个值的时候必须小心。一下代码不会以你想象地那样工作：
+由于target被重用，当你需要往栈上压多个值的时候必须小心。以下代码不会以你想象地那样工作：
 
     XPUSHi(10);
     XPUSHi(20);
@@ -2298,6 +2248,9 @@ the stack; set C<TARG> to 20, push a pointer to C<TARG> onto the stack".
 At the end of the operation, the stack does not contain the values 10
 and 20, but actually contains two pointers to C<TARG>, which we have set
 to 20.
+
+这样写会被解释为“先将C<TARG>设置为10，然后将一个指向C<TARG>的指针压到栈中；将C<TARG>设置为20，再将指向它的指针压到栈中”。
+操作完成后，栈中不会包含10和20，而是两个指向C<TARG>的指针，其值为20。
 
 If you need to push multiple different values then you should either use
 the C<(X)PUSHs> macros, or else use the new C<m(X)PUSH[iunp]> macros,
@@ -2309,10 +2262,17 @@ C<(X)PUSHmortal>), pushing that onto the stack (extending it if necessary
 in the case of the C<mXPUSH[iunp]> macros), and then setting its value.
 Thus, instead of writing this to "fix" the example above:
 
+如果你需要将多个不同的值压栈，应该使用C<(X)PUSHs>宏或者新的C<m(X)PUSH[iunp]>宏，这些都不会使用C<TARG>。
+C<(X)PUSHs>只会向栈上压一个SV*，如L</XSUBs和参数栈>一节中提到的，它通常应当是“将死的”。
+新的C<m(X)PUSH[iunp]>宏简化了该操作，它会创建一个新的将死变量（通过C<(X)PUSHmortal>），
+将其压到栈上（如果必要的话会拓展栈），并设置其值。应次我们需要这样修改上面的例子：
+
     XPUSHs(sv_2mortal(newSViv(10)))
     XPUSHs(sv_2mortal(newSViv(20)))
 
 you can simply write:
+
+也可以简单地写为：
 
     mXPUSHi(10)
     mXPUSHi(20)
@@ -2322,6 +2282,11 @@ need a C<dTARG> in your variable declarations so that the C<*PUSH*>
 macros can make use of the local variable C<TARG>.  See also C<dTARGET>
 and C<dXSTARG>.
 
+补充：如果你使用C<(X)PUSH[iunp]>，那么你需要申明一个C<dTAEG>，这样C<*PUSH*>宏就可以使用本地的变量C<TARG>。
+参见C<dTARGET>和C<dXSTARG>。
+
+=head2 暂存器
+
 =head2 Scratchpads
 
 The question remains on when the SVs which are I<target>s for opcodes
@@ -2330,14 +2295,27 @@ unit--a subroutine or a file (for opcodes for statements outside of
 subroutines)--is compiled. During this time a special anonymous Perl
 array is created, which is called a scratchpad for the current unit.
 
+这里有一个遗留问题：作为opcodes的I<target>s的SVs是什么时候创建的。
+答案是它们是在所处单元--一个子例程或一个文件--被编译的时候。
+在此期间一个特殊的匿名Perl数组被创建出来，在当前单元中被称作暂存器。
+
 A scratchpad keeps SVs which are lexicals for the current unit and are
 targets for opcodes. One can deduce that an SV lives on a scratchpad
 by looking on its flags: lexicals have C<SVs_PADMY> set, and
 I<target>s have C<SVs_PADTMP> set.
 
+一个暂存器会将作为opcodes的当前单元中的词法域的target保存起来。
+你可以通过SV上的标识判断它是否在暂存器上：词法域变量的C<SVs_PADMY>字段将被设置，
+I<target>s的C<SVs_PADTMP>字段将被设置。
+
 The correspondence between OPs and I<target>s is not 1-to-1. Different
 OPs in the compile tree of the unit can use the same target, if this
 would not conflict with the expected life of the temporary.
+
+OPs和I<target>s并不是一一对应的关系。编译树上同一单元的不同OPs可以使用相同的target，
+如果这和它的生命周期不矛盾的话。
+
+=head2 暂存器与递归
 
 =head2 Scratchpads and recursion
 
@@ -2346,6 +2324,10 @@ the scratchpad AV. In fact it contains a pointer to an AV of
 (initially) one element, and this element is the scratchpad AV. Why do
 we need an extra level of indirection?
 
+其实一个编译单元包含一个指向暂存器AV的指针的说法并不完全正确。
+实际上它包含一个指向一个（被初始化为）只有一个元素的AV的指针，而这个元素才是暂存器AV。
+为什么我们需要另一层的间接跳转呢？
+
 The answer is B<recursion>, and maybe B<threads>. Both
 these can create several execution pointers going into the same
 subroutine. For the subroutine-child not write over the temporaries
@@ -2353,24 +2335,41 @@ for the subroutine-parent (lifespan of which covers the call to the
 child), the parent and the child should have different
 scratchpads. (I<And> the lexicals should be separate anyway!)
 
+这个答案是B<递归>，可能也有B<线程>。它们都会为同一个子例程创建多个运行时的指针。
+为了让被递归调用的子子例程不会覆盖父子例程的临时变量（其生命周期包含了对子子例程的调用），父子例程都应该有自己的暂存器。
+(I<并且>此法域的情况应该是另一种情况！)
+
 So each subroutine is born with an array of scratchpads (of length 1).
 On each entry to the subroutine it is checked that the current
 depth of the recursion is not more than the length of this array, and
 if it is, new scratchpad is created and pushed into the array.
 
+每一个子例程的创建都伴随着一个长度为1的暂存器数组。在子例程的每一个入口点都会检查当前的递归深度是否比数组的长度长，
+如果是的话，将创建新的暂存器并将其存如数组中。
+
 The I<target>s on this scratchpad are C<undef>s, but they are already
 marked with correct flags.
 
+暂存器中的I<target>s都是C<undef>s，但是它们已经被设置了正确额标记。
+
+=head1 编译的代码
+
 =head1 Compiled code
+
+=head2 代码树
 
 =head2 Code tree
 
 Here we describe the internal form your code is converted to by
 Perl. Start with a simple example:
 
+这里我们描述Perl将你的代码转换程的内部形式。以这个简单的例子开始：
+
   $a = $b + $c;
 
 This is converted to a tree similar to this one:
+
+它被转换为类似于下面这棵树的样子：
 
              assign-to
            /           \
@@ -2384,12 +2383,20 @@ There is an additional "thread" going through the nodes of the tree
 which shows the order of execution of the nodes.  In our simplified
 example above it looks like:
 
+（稍微有些复杂）。这课树反映了Perl parse你的代码的方式，但是和运行顺序无关。
+另有一个额外的“线程”遍历这棵树以展现节点执行的顺序。在我们简化的例子中它看起来像这样：
+
      $b ---> $c ---> + ---> $a ---> assign-to
 
 But with the actual compile tree for C<$a = $b + $c> it is different:
 some nodes I<optimized away>.  As a corollary, though the actual tree
 contains more nodes than our simplified example, the execution order
 is the same as in our example.
+
+但是C<$a = $b + $c>实际的编译树是有所不同的：一些节点被优化掉。结果尽管实际的树包含了比我们简化的树更多的节点，
+但是执行的顺序还是一样的。
+
+=head2 研究这颗树
 
 =head2 Examining the tree
 
@@ -2398,6 +2405,9 @@ C<-DDEBUGGING> on the C<Configure> command line), you may examine the
 compiled tree by specifying C<-Dx> on the Perl command line.  The
 output takes several lines per node, and for C<$b+$c> it looks like
 this:
+
+如果你的perl以调试模式编译（通常通过打开C<Configure>命令行的C<-DDEBUGGING>开关来设置），
+你可以通过设置perl命令行的C<-Dx>来研究编译树。每一个节点都会打印多行输出，C<$b+$c>的结果看起来像这样：
 
     5           TYPE = add  ===> 6
                 TARG = 1
@@ -2428,6 +2438,9 @@ not optimized away (one per number in the left column).  The immediate
 children of the given node correspond to C<{}> pairs on the same level
 of indentation, thus this listing corresponds to the tree:
 
+这棵树有5个节点（每个节点有一个C<TYPE>标识），只有三个没有被优化掉（每个节点在左边一列都有一个数字）。
+给定节点的子节点都包含在相同缩进的C<{}>对中，以下为对应的树：
+
                    add
                  /     \
                null    null
@@ -2438,6 +2451,8 @@ The execution order is indicated by C<===E<gt>> marks, thus it is C<3
 4 5 6> (node C<6> is not included into above listing), i.e.,
 C<gvsv gvsv add whatever>.
 
+执行顺序是通过C<===E<gt>>标识的，为C<3 4 5 6>（节点C<6>没有被包括进来），即：C<gvsv gvsv add whatever>。
+
 Each of these nodes represents an op, a fundamental operation inside the
 Perl core. The code which implements each operation can be found in the
 F<pp*.c> files; the function which implements the op with type C<gvsv>
@@ -2446,6 +2461,10 @@ different numbers of children: C<add> is a binary operator, as one would
 expect, and so has two children. To accommodate the various different
 numbers of children, there are various types of op data structure, and
 they link together in different ways.
+
+每个树节点带便一个op，Perl核心中的一种基础操作。每一个操作的实现都可以在F<pp*.c>文件中找到；
+实现类型为C<gvsv>的op的函数为C<pp_gvsv>，等等。如上面树所表示的，不同的op有不同数量的子节点：
+C<add>是一个二元节点，有各种类型的op数据结构，它们通过不同的方式链接起来。
 
 The simplest type of op structure is C<OP>: this has no children. Unary
 operators, C<UNOP>s, have one child, and this is pointed to by the
@@ -2456,6 +2475,11 @@ first child is pointed to by C<op_first> and the last child by
 C<op_last>. The children in between can be found by iteratively
 following the C<op_sibling> pointer from the first child to the last.
 
+最简单的op结构是c<OP>；它没有子节点。一元操作C<UNOP>s通过C<op_first>字段指向唯一的一个子节点。
+二元操作C<BINOP>s有C<op_first>和C<op_last>两个字段。最复杂的操作类型为C<LISTOP>，它有任意数量的子节点。
+在这种情况下，C<op_first>指向第一个字节点，C<op_last>指向最后一个子节点。
+之间的字节点可以递归地通过C<op_sibling>指针从第一个开始到最后一个字节点获取到。
+
 There are also two other op types: a C<PMOP> holds a regular expression,
 and has no children, and a C<LOOP> may or may not have children. If the
 C<op_children> field is non-zero, it behaves like a C<LISTOP>. To
@@ -2463,8 +2487,16 @@ complicate matters, if a C<UNOP> is actually a C<null> op after
 optimization (see L</Compile pass 2: context propagation>) it will still
 have children in accordance with its former type.
 
+同样有另外两种op类型：C<PMOP>保存一个正则表达式，它没有子节点。C<LOOP>有或没有字节点。
+如果C<op_children>字段为非0，那么它就像C<LISTOP>。
+让事情变得更复杂的是：如果一个C<UNOP>优化后是一个C<null>op（请参见L</第二轮编译：上下文拓展>）它仍然根据它之前的类型拥有字节点。
+
 Another way to examine the tree is to use a compiler back-end module, such
 as L<B::Concise>.
+
+另一种检查树的方式是使用编译器后端模块，比如L<B::Concise>。
+
+=head2 编译阶段1：检查子例程
 
 =head2 Compile pass 1: check routines
 
