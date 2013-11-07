@@ -2489,7 +2489,7 @@ have children in accordance with its former type.
 
 同样有另外两种op类型：C<PMOP>保存一个正则表达式，它没有子节点。C<LOOP>有或没有字节点。
 如果C<op_children>字段为非0，那么它就像C<LISTOP>。
-让事情变得更复杂的是：如果一个C<UNOP>优化后是一个C<null>op（请参见L</第二轮编译：上下文拓展>）它仍然根据它之前的类型拥有字节点。
+让事情变得更复杂的是：如果一个C<UNOP>优化后是一个C<null>op（请参见L</第二轮编译：上下文传递>）它仍然根据它之前的类型拥有字节点。
 
 Another way to examine the tree is to use a compiler back-end module, such
 as L<B::Concise>.
@@ -2504,11 +2504,17 @@ The tree is created by the compiler while I<yacc> code feeds it
 the constructions it recognizes. Since I<yacc> works bottom-up, so does
 the first pass of perl compilation.
 
+伴随着I<yacc>代码将识别后的结构传给编译器，树被逐渐创建出来。由于I<yacc>是自底向上的，
+所以perl编译的第一次遍历阶段也是如此。
+
 What makes this pass interesting for perl developers is that some
 optimization may be performed on this pass.  This is optimization by
 so-called "check routines".  The correspondence between node names
 and corresponding check routines is described in F<opcode.pl> (do not
 forget to run C<make regen_headers> if you modify this file).
+
+使得perl开发者产生兴趣的是此阶段做的被称作"检查自例程"的优化。
+节点名称和对应的”检查子例程“在F<opcode.pl>中描述（如果你修改了这个文件，不要忘记运行C<make regen_headers>）。
 
 A check routine is called when the node is fully constructed except
 for the execution-order thread.  Since at this time there are no
@@ -2516,13 +2522,22 @@ back-links to the currently constructed node, one can do most any
 operation to the top-level node, including freeing it and/or creating
 new nodes above/below it.
 
+当一个节点完全构建完成后将会运行一个检查子例程。由于此时并没有对当前节点的反向链接，
+你可以对顶级节点做几乎任何操作，包括释放掉它或者在它之上或之下创建新的节点。
+
 The check routine returns the node which should be inserted into the
 tree (if the top-level node was not modified, check routine returns
 its argument).
 
+检查子例程返回需要插入到树中的节点（如果顶级节点没有被修改，检查子例程直接返回它的参数）。
+
 By convention, check routines have names C<ck_*>. They are usually
 called from C<new*OP> subroutines (or C<convert>) (which in turn are
 called from F<perly.y>).
+
+按约定，检查子例程命名为C<ck_*>。它们通常被C<new*OP>子例程（或C<convert>）（其间接被从F<perly.y>调用）调用。
+
+=head2 编译阶段1a: 常量折叠
 
 =head2 Compile pass 1a: constant folding
 
@@ -2532,8 +2547,16 @@ judged to be constant) it is immediately executed, and a I<constant>
 node with the "return value" of the corresponding subtree is
 substituted instead.  The subtree is deleted.
 
+在检查子例程被调用后会立刻检查返回的节点是否可以在编译期运行。
+如果是（其值被判断是常量）它会被立刻执行，并且相应子树被替换为它的返回值对应的常量节点。
+子树随后被删除。
+
 If constant folding was not performed, the execution-order thread is
 created.
+
+如果常量折叠没有发生，执行线程将被创建。
+
+=head2 编译阶段2： 上下文传递
 
 =head2 Compile pass 2: context propagation
 
@@ -2543,11 +2566,20 @@ down through the tree.  At this time the context can have 5 values
 lvalue.  In contrast with the pass 1 this pass is processed from top
 to bottom: a node's context determines the context for its children.
 
+当一个编译树的上下文已知时，它将沿着树传递下去。此时上下文可以有五个值（和运行上下文的2个值有所区别）：
+void，boolean，scalar，list，和lvalue。
+与第一阶段不同的是这一阶段的遍历方向是自顶向下：节点的上下文决定了其子节点的上下文。
+
 Additional context-dependent optimizations are performed at this time.
 Since at this moment the compile tree contains back-references (via
 "thread" pointers), nodes cannot be free()d now.  To allow
 optimized-away nodes at this stage, such nodes are null()ified instead
 of free()ing (i.e. their type is changed to OP_NULL).
+
+额外的上下文相关的优化将在此时进行。从此时起编译树开始包含反向引用（通过"线程"指针），
+节点不再可以释放了。为了在这个阶段优化掉节点，这些节点被null()掉而不是释放掉（例如，它们的类型变为OP_NULL）。
+
+=head2 编译阶段3：窥孔优化
 
 =head2 Compile pass 3: peephole optimization
 
