@@ -2709,8 +2709,8 @@ This is called at the end of a lexical scope, just before unwinding the
 stack. I<o> is the root of the optree representing the scope; it is a
 double pointer so you can replace the OP if you need to.
 
-这个将在词法域的结尾处调用，恰好在栈回滚之前。
-I<o>是optree的根，代表作用域；它是一个双指针所以如果需要的话你可以替换指向的OP。
+这个将会在堆栈回收之前，词法域的结尾被调用。
+I<o>是optree的根，代表作用域；它是一个二级指针，所以如果需要的话你可以替换指向的OP。
 
 =item C<void bhk_post_end(pTHX_ OP **o)>
 
@@ -2719,12 +2719,18 @@ stack. I<o> is as above. Note that it is possible for calls to C<pre_>
 and C<post_end> to nest, if there is something on the save stack that
 calls string eval.
 
+这个将会在堆栈回收之前，词法域的结尾被调用。I<o>和之前的一样。注意C<pre_>和C<post_end>的嵌套调用是可能的，
+如果在保存栈上调用字符串evel的话。
+
 =item C<void bhk_eval(pTHX_ OP *const o)>
 
 This is called just before starting to compile an C<eval STRING>, C<do
 FILE>, C<require> or C<use>, after the eval has been set up. I<o> is the
 OP that requested the eval, and will normally be an C<OP_ENTEREVAL>,
 C<OP_DOFILE> or C<OP_REQUIRE>.
+
+这个将在编译C<字符串eval>，C<do FILE>，C<require>或者C<use>之前调用，在eval被建立之后。
+I<o>是请求eval的OP，一般都是C<OP_ENTEREVAL>，C<OP_DOFILE>或者C<OP_REQUIRE>.
 
 =back
 
@@ -2736,6 +2742,10 @@ flags indicating which entries are valid. If you do need to allocate
 your C<BHK> dynamically for some reason, be sure to zero it before you
 start.
 
+当你定义了自己的钩子函数，你需要一个C<BHK>结构体以将它们放置进去。最好能为它静态分配内存，
+因为一旦注册就不可能回收了。通过C<BhkENTRY_set>宏将函数指针插入到结构中，它同时会设置相应字段表明插入的条目是合法的。
+如果你实在需要为你的C<BHK>动态分配内存，能记得在开始之前将其清零。
+
 Once registered, there is no mechanism to switch these hooks off, so if
 that is necessary you will need to do this yourself. An entry in C<%^H>
 is probably the best way, so the effect is lexically scoped; however it
@@ -2744,6 +2754,9 @@ temporarily switch entries on and off. You should also be aware that
 generally speaking at least one scope will have opened before your
 extension is loaded, so you will see some C<pre/post_end> pairs that
 didn't have a matching C<start>.
+
+一旦注册就没有机制可以将这些钩子去掉了，因此如果需要的话你可以自己做这件事。
+C<%^H>中的条目是最好的方式，
 
 =head1 Examining internal data structures with the C<dump> functions
 
