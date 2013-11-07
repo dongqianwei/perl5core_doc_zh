@@ -2589,6 +2589,10 @@ is neither top-down or bottom-up, but in the execution order (with
 additional complications for conditionals).  Optimizations performed
 at this stage are subject to the same restrictions as in the pass 2.
 
+在子例程（或者C<eval>或一个文件）的编译树构建完成后，会对代码进行一次额外的遍历。
+这轮遍历既不是自顶向下，也不是自底向上，而是执行顺序（遇到条件判断的时候会比较复杂）。
+这一阶段的优化和第二阶段的限制是一样的。
+
 Peephole optimizations are done by calling the function pointed to
 by the global variable C<PL_peepp>.  By default, C<PL_peepp> just
 calls the function pointed to by the global variable C<PL_rpeepp>.
@@ -2597,6 +2601,12 @@ the execution-order op chain, and recursively calls C<PL_rpeepp> for
 each side chain of ops (resulting from conditionals).  Extensions may
 provide additional optimisations or fixups, hooking into either the
 per-subroutine or recursive stage, like this:
+
+窥孔优化通过调用全局变量C<PL_peepp>指向的函数进行。
+默认情况下C<PL_peepp>只调用被全局变量C<PL_rpeepp>指向的函数。
+默认情况下它只会做一下基本的op修正，对执行顺序上的op调用链进行优化，
+并递归地对链条的每一边调用C<PL_rpeepp>（条件分支导致的）。
+拓展可能会提供额外的优化或修正，在每个子例程或递归阶段中加入钩子，就像这样：
 
     static peep_t prev_peepp;
     static void my_peep(pTHX_ OP *o)
@@ -2622,6 +2632,8 @@ per-subroutine or recursive stage, like this:
         prev_rpeepp = PL_rpeepp;
         PL_rpeepp = my_rpeep;
 
+=head2 可拔插的runops
+
 =head2 Pluggable runops
 
 The compile tree is executed in a runops function.  There are two runops
@@ -2630,20 +2642,33 @@ with DEBUGGING and C<Perl_runops_standard> is used otherwise.  For fine
 control over the execution of the compile tree it is possible to provide
 your own runops function.
 
+编译树在runops函数中执行。有两个runops函数，分别位于F<run.c>和F<dump.c>中。
+C<Perl_runops_debug>被用于调试，而C<Perl_runops_standard>被用在其他地方。
+为了更好地控制编译树的执行你可以提供你自己的runops函数。
+
 It's probably best to copy one of the existing runops functions and
 change it to suit your needs.  Then, in the BOOT section of your XS
 file, add the line:
+
+最好的方式是拷贝已存在的runops函数并修改以适应你的需求。然后在你的XS文件中的BOOT段加入一行：
 
   PL_runops = my_runops;
 
 This function should be as efficient as possible to keep your programs
 running as fast as possible.
 
+该函数将尽可能高效地使你的程序尽可能快地运行。
+
+=head2 编译期 域 钩子
+
 =head2 Compile-time scope hooks
 
 As of perl 5.14 it is possible to hook into the compile-time lexical
 scope mechanism using C<Perl_blockhook_register>. This is used like
 this:
+
+自从5.14开始，可以使用C<Perl_blockhook_register>在编译期词法域加入钩子。
+可以这样使用：
 
     STATIC void my_start_hook(pTHX_ int full);
     STATIC BHK my_hooks;
@@ -2655,12 +2680,16 @@ this:
 This will arrange to have C<my_start_hook> called at the start of
 compiling every lexical scope. The available hooks are:
 
+着将导致每个此法域在编译开始的时候安置C<my start hook>。可以使用的钩子有：
+
 =over 4
 
 =item C<void bhk_start(pTHX_ int full)>
 
 This is called just after starting a new lexical scope. Note that Perl
 code like
+
+这个将会在一个新的词法域开始的时候被调用。比如Perl代码：
 
     if ($x) { ... }
 
@@ -2670,11 +2699,18 @@ C<}>, so calls to C<start> and C<pre/post_end> will match. Anything
 pushed onto the save stack by this hook will be popped just before the
 scope ends (between the C<pre_> and C<post_end> hooks, in fact).
 
+创建了两个域：第一个起始于C<(>并且有C<full == 1>，第二个起始于C<{>并且有C<full == 0>.
+它们都终止于C<}>，因此调用的C<start>和C<pre/post_end>将匹配。
+任何被钩子压到保存栈上的东西都会在退出域之前被弹出（事实上是在C<pre_>和C<post_end>钩子之间）。
+
 =item C<void bhk_pre_end(pTHX_ OP **o)>
 
 This is called at the end of a lexical scope, just before unwinding the
 stack. I<o> is the root of the optree representing the scope; it is a
 double pointer so you can replace the OP if you need to.
+
+这个将在词法域的结尾处调用，恰好在栈回滚之前。
+I<o>是optree的根，代表作用域；它是一个双指针所以如果需要的话你可以替换指向的OP。
 
 =item C<void bhk_post_end(pTHX_ OP **o)>
 
