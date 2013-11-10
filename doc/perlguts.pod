@@ -2756,27 +2756,41 @@ extension is loaded, so you will see some C<pre/post_end> pairs that
 didn't have a matching C<start>.
 
 一旦注册就没有机制可以将这些钩子去掉了，因此如果需要的话你可以自己做这件事。
-C<%^H>中的条目是最好的方式，
+C<%^H>中的条目是最好的方式，这样的话效果就是词法域的；然而同样可以使用C<BhkDISABLE>和C<BhkENABLE>宏以暂时性的将条目开关。
+你应该注意到一般来说在你的拓展被加载前止至少已经进入一个域了，所以你会发现一下C<pre/post_end>对没有匹配的C<start>。
+
+=head1 使用C<dump>函数检查内部数据结构
 
 =head1 Examining internal data structures with the C<dump> functions
 
 To aid debugging, the source file F<dump.c> contains a number of
 functions which produce formatted output of internal data structures.
 
+为了帮助调试，F<dump.c>代码文件包含了一系列用于将内部数据结构格式化输出的函数。
+
 The most commonly used of these functions is C<Perl_sv_dump>; it's used
 for dumping SVs, AVs, HVs, and CVs. The C<Devel::Peek> module calls
 C<sv_dump> to produce debugging output from Perl-space, so users of that
 module should already be familiar with its format.
+
+其中最通用的是C<Perl_sv_dump>；它被用于dump SVs, AVs, HVs, 和 CVs.
+C<Devel::Peek>模块调用C<sv_dump>来生成Perl宏见的调试信息，所以这个模块的用于对格式已经很熟悉了。
 
 C<Perl_op_dump> can be used to dump an C<OP> structure or any of its
 derivatives, and produces output similar to C<perl -Dx>; in fact,
 C<Perl_dump_eval> will dump the main root of the code being evaluated,
 exactly like C<-Dx>.
 
+C<Perl_op_dump>用于dump一个C<OP>或任何衍生的操作结构，并输出类似域C<perl -Dx>的内容；
+事实上，C<Perl_dump_eval>将会dump执行代码的根，就向C<-Dx>一样。
+
 Other useful functions are C<Perl_dump_sub>, which turns a C<GV> into an
 op tree, C<Perl_dump_packsubs> which calls C<Perl_dump_sub> on all the
 subroutines in a package like so: (Thankfully, these are all xsubs, so
 there is no op tree)
+
+其他有用的函数包括C<Perl_dump_sub>，它会将一个C<GV>转化为一个op树，
+C<Perl_dump_packsubs>将对一个包中的所有子例程调用C<Perl_dump_sub>，就像这样（这些都是xsubs，所以没有op树）：
 
     (gdb) print Perl_dump_packsubs(PL_defstash)
 
@@ -2793,7 +2807,13 @@ there is no op tree)
 and C<Perl_dump_all>, which dumps all the subroutines in the stash and
 the op tree of the main root.
 
+以及C<Perl_dump_all>用于stash中的所有子例程以及main根的op树dump出来。
+
+=head1 如何做到多解释器和并发
+
 =head1 How multiple interpreters and concurrency are supported
+
+=head2 PERL_IMPLICIT_CONTEXT的背景
 
 =head2 Background and PERL_IMPLICIT_CONTEXT
 
@@ -2805,6 +2825,11 @@ interpreters, with one interpreter represented either as a C structure,
 or inside a thread-specific structure.  These structures contain all
 the context, the state of that interpreter.
 
+Perl解释其可以被看作一种闭盒：它有一个输入代码的API或一些其他功能，
+但是它也有自己使用的函数。这有点像一个对象，而且你可以将Perl编译为可以多解释器共存的模式，
+一个解释器表示为一个C结构或者在专门一个线程的结构中。这些结构包含所有的上下文，解释器的状态。
+
+
 One macro controls the major Perl build flavor: MULTIPLICITY. The
 MULTIPLICITY build has a C structure that packages all the interpreter
 state. With multiplicity-enabled perls, PERL_IMPLICIT_CONTEXT is also
@@ -2812,6 +2837,13 @@ normally defined, and enables the support for passing in a "hidden" first
 argument that represents all three data structures. MULTIPLICITY makes
 multi-threaded perls possible (with the ithreads threading model, related
 to the macro USE_ITHREADS.)
+
+有一个宏控制了主要的Perl编译方式：MULTIPLICITY。
+MULTIPLICITY类型的编译有一个C结构打包了所有的解释器状态。
+多解释器共存模式打开后，同样定义了PERL_IMPLICIT_CONTEXT，
+并且支持通过第一个参数传递一个隐含对象，其包含了所有的三个数据结构。
+MULTIPLICITY使perl可以支持多线程（使用ithreads线程模型，与USE_ITHREADS相关）。
+
 
 Two other "encapsulation" macros are the PERL_GLOBAL_STRUCT and
 PERL_GLOBAL_STRUCT_PRIVATE (the latter turns on the former, and the
@@ -2828,16 +2860,31 @@ please see F<miniperlmain.c> for usage details.  You may also need
 to use C<dVAR> in your coding to "declare the global variables"
 when you are using them.  dTHX does this for you automatically.
 
+其他封装的宏包括PERL_GLOBAL_STRUCT 和 PERL_GLOBAL_STRUCT_PRIVATE
+（后者打开前者，前者打开MULTIPLICIRY。）PERL_GLOBAL_STRUCT会将所有Perl内部的变量封装在一个全局结构中，
+perl_vars，它可以通过（全局的）&PL_Vars或者VarsPtr或者函数Perl_GetVars()访问。
+PERL_GLOBAL_STRUCT_PRIVATE则走的更远，
+同样只分配了一个结构（在main()中分配，在堆上或者栈上）但是没有全局的数据符号指向它。
+无论在哪种情况这个全局结构要在main()的最开头的地方使用Perl_init_global_struct()初始化并相应地在调用perl_free()后使用Perl_Free_global_struct()将其清理。
+请参见F<miniperlmain.c>以获取使用细节。你也许需要在你的代码中使用C<dVAR>来“声明全局变量”。dTHX会自动为你这么做。
+
 To see whether you have non-const data you can use a BSD-compatible C<nm>:
+
+为了查看你是否有非常量的数据，可以使用C<nm>。
 
   nm libperl.a | grep -v ' [TURtr] '
 
 If this displays any C<D> or C<d> symbols, you have non-const data.
 
+如果它显示任何C<D>或C<d>符号，说明你有非常量数据。
+
 For backward compatibility reasons defining just PERL_GLOBAL_STRUCT
 doesn't actually hide all symbols inside a big global struct: some
 PerlIO_xxx vtables are left visible.  The PERL_GLOBAL_STRUCT_PRIVATE
 then hides everything (see how the PERLIO_FUNCS_DECL is used).
+
+为了向前兼容，仅仅定义PERL_GLOBAL_STRUCT实际上并不会将这个全局结构体中的所有符号都隐藏起来：
+一些PerlIO xxx 虚表依然可见。PERL_GLOBAL_STRUCT_PRIVATE会隐藏所有的东西（参考PERLOP_FUNC_DECL是怎么用的）。
 
 All this obviously requires a way for the Perl internal functions to be
 either subroutines taking some kind of structure as the first
@@ -2845,6 +2892,9 @@ argument, or subroutines taking nothing as the first argument.  To
 enable these two very different ways of building the interpreter,
 the Perl source (as it does in so many other situations) makes heavy
 use of macros and subroutine naming conventions.
+
+所有的这些显然需要Perl内部的函数要么可以对第一个参数做特殊处理要么不做特殊处理。
+为了实现这两种完全不同的解释器构建方式，Perl代码（与其在其他很多场景的处理方式一样）大量使用了宏和子例程名称约定。
 
 First problem: deciding which functions will be public API functions and
 which will be private.  All functions whose names begin C<S_> are private
@@ -2856,11 +2906,19 @@ If it exists in L<perlapi>, it's part of the API.  If it doesn't, and you
 think it should be (i.e., you need it for your extension), send mail via
 L<perlbug> explaining why you think it should be.
 
+第一个问题：函数如何判断是公共API还是私有的。所有以C<S_>开头的函数都是私有的。
+其他函数都以"Perl_"开头，但是以"Perl"开头并不意味着这个函数是API的一部分。（参见L<内部函数>。）
+查看一个函数是否为API最简单的方法就是参考L<perlapi>文档。如果在文档中，就是API。如果不在而你又认为它应该是（比如你在你的拓展中用到）。
+请通过L<perlbug>发邮件以解释你的理由。
+
 Second problem: there must be a syntax so that the same subroutine
 declarations and calls can pass a structure as their first argument,
 or pass nothing.  To solve this, the subroutines are named and
 declared in a particular way.  Here's a typical start of a static
 function used within the Perl guts:
+
+第二个问题：必须要有一种语法使得同样的子例程声明可以支持将一个结构体通过第一个参数传入或者什么都不传。
+为了解决这个问题，子例程用一种特殊的方式命名和声明。这是Perl guts使用的静态函数的典型开始：
 
   STATIC void
   S_incline(pTHX_ char *s)
@@ -2868,8 +2926,12 @@ function used within the Perl guts:
 STATIC becomes "static" in C, and may be #define'd to nothing in some
 configurations in the future.
 
+STATIC就是C中的"static"，但也可能在将来被定义为空。
+
 A public function (i.e. part of the internal API, but not necessarily
 sanctioned for use in extensions) begins like this:
+
+一个公共函数（比如内部API的一部分，但是被限制用于拓展）可以这样开始：
 
   void
   Perl_sv_setiv(pTHX_ SV* dsv, IV num)
@@ -2881,6 +2943,10 @@ The first character could be 'p' for a B<p>rototype, 'a' for B<a>rgument,
 or 'd' for B<d>eclaration, so we have C<pTHX>, C<aTHX> and C<dTHX>, and
 their variants.
 
+C<pTHX_>是F<perl.h>中定义的宏，它隐藏了解释其上下文的细节。THX代表"thread"，"this"或"thingy"，
+根据场景的不同而不同。第一个字符可以是'p'表示原型，'a'表示参数，d表示声明。
+所以我们有C<pTHX>, C<aTHX> 和 C<dTHX>以及它们的变种。
+
 When Perl is built without options that set PERL_IMPLICIT_CONTEXT, there is no
 first argument containing the interpreter's context.  The trailing underscore
 in the pTHX_ macro indicates that the macro expansion needs a comma
@@ -2890,9 +2956,16 @@ subroutine is not prototyped to take the extra argument.  The form of the
 macro without the trailing underscore is used when there are no additional
 explicit arguments.
 
+当Perl编译的时候没有设置PERL_IMPLICIT_CONTEXT，那么就没有包含解释器上下文的参数了。
+pTHX_宏尾部的下划线表示宏拓展需要在上下文参数后面加一个逗号，因为还有其他参数在它后面。
+如果没有定义PERL_IMPLICIT_CONTEXT，pTHX_将被忽略，子例程就不会被原型化以处理多余的参数。
+当不需要额外的参数时使用没有下划线的宏。
+
 When a core function calls another, it must pass the context.  This
 is normally hidden via macros.  Consider C<sv_setiv>.  It expands into
 something like this:
+
+当一个核心函数调用另一个的时候，它必须传递上下文。这通常被隐藏在宏中。例如C<sv_setiv>会被拓展为：
 
     #ifdef PERL_IMPLICIT_CONTEXT
       #define sv_setiv(a,b)      Perl_sv_setiv(aTHX_ a, b)
@@ -2903,16 +2976,24 @@ something like this:
 
 This works well, and means that XS authors can gleefully write:
 
+这样工作得很好，同样意味着XS作者可以这样写：
+
     sv_setiv(foo, bar);
 
 and still have it work under all the modes Perl could have been
 compiled with.
+
+而且可以在任何方式构建的Perl中工作。
 
 This doesn't work so cleanly for varargs functions, though, as macros
 imply that the number of arguments is known in advance.  Instead we
 either need to spell them out fully, passing C<aTHX_> as the first
 argument (the Perl core tends to do this with functions like
 Perl_warner), or use a context-free version.
+
+对于varargs函数来说这样并不是很清晰，尽管宏指定了已知参数的数量。
+因此我们要么需要将它们完整地表示出来，C<aTHX_>作为第一个参数传入
+（Perl内部在Perl_warner这样的函数中就是如此使用的），要么使用上下文无关的版本。
 
 The context-free version of Perl_warner is called
 Perl_warner_nocontext, and does not take the extra argument.  Instead
@@ -2921,9 +3002,19 @@ C<#define warner Perl_warner_nocontext> so that extensions get source
 compatibility at the expense of performance.  (Passing an arg is
 cheaper than grabbing it from thread-local storage.)
 
+上下文无关版本的Perl_warner称作Perl_Warner_nocontext，而且不携带而外参数。
+取而代之的是使用dTHX；以从线程本地储存空间中获取上下文。
+我们C<#define warner Perl_warner_nocontext>，这样拓展就可以以执行效率为代价保持一致性了。
+（传入一个参数要比从线程存储空间中获取更高效。）
+
 You can ignore [pad]THXx when browsing the Perl headers/sources.
 Those are strictly for use within the core.  Extensions and embedders
 need only be aware of [pad]THX.
+
+当你查看Perl 头文件或代码时可以忽略[pad]THXx。它们都是内部使用的。
+拓展和内嵌的代码只需要关注[pad]THX。
+
+=head2 dTHR发生了什么？
 
 =head2 So what happened to dTHR?
 
@@ -2933,6 +3024,11 @@ pointers around, so C<dTHR> is not useful any more.  Perl 5.6.0 and
 later still have it for backward source compatibility, but it is defined
 to be a no-op.
 
+C<dTHR>是5.005引入的以支持更早的线程模型。更早的线程模型使用C<THX>机制传递上下文指针，
+所以C<dTHR>现在不再使用了。Perl 5.6.0以及之后仍然有这个是为了爆出代码上向前适配，但是它被定义为一个no_op。
+
+=head2 在拓展中我如何使用这些？
+
 =head2 How do I use all this in extensions?
 
 When Perl is built with PERL_IMPLICIT_CONTEXT, extensions that call
@@ -2940,6 +3036,10 @@ any functions in the Perl API will need to pass the initial context
 argument somehow.  The kicker is that you will need to write it in
 such a way that the extension still compiles when Perl hasn't been
 built with PERL_IMPLICIT_CONTEXT enabled.
+
+当Perl构建的时候打开了PERL_IMPLICIT_CONTEXT，拓展调用任何Perl API的时候需要用某种方式传递初始化的上下文。
+
+
 
 There are three ways to do this.  First, the easy but inefficient way,
 which is also the default, in order to maintain source compatibility
