@@ -186,7 +186,7 @@ Its address can be used whenever an C<SV*> is needed. Make sure that
 you don't try to compare a random sv with C<&PL_sv_undef>. For example
 when interfacing Perl code, it'll work correctly for:
 
-它的地址可以被用于任何一个以SV*为参数的地方。确保你不会用一个SV与&PL_sv_undef进行比较。例如当与Perl代码交互的时候，如下方可以正常工作：
+它的地址可以被用于任何一个以 C<SV*> 为参数的地方。确保你不会用一个SV与C<&PL_sv_undef>进行比较。例如当与Perl代码交互的时候，如下方可以正常工作：
 
   foo(undef);
 
@@ -204,7 +204,7 @@ So to repeat always use SvOK() to check whether an sv is defined.
 Also you have to be careful when using C<&PL_sv_undef> as a value in
 AVs or HVs (see L<AVs, HVs and undefined values>).
 
-同样当时使用&PL_sv_undef作为AVs或HVs的值的时候千万要小心（看AVs，HVs和undefined值那一章节）。
+同样当时使用 C<&PL_sv_undef> 作为AVs或HVs的值的时候千万要小心（参见L<AVs，HVs和undefined值>章节）。
 
 There are also the two values C<PL_sv_yes> and C<PL_sv_no>, which contain
 boolean TRUE and FALSE values, respectively.  Like C<PL_sv_undef>, their
@@ -293,9 +293,10 @@ increasing C<AvARRAY> by one and decreasing C<AvFILL> and C<AvMAX>.
 Again, the location of the real start of the C array only comes into
 play when freeing the array. See C<av_shift> in F<av.c>.
 
-与这种偏移的hack技巧类似的方法被应用于高效地移除或切除数组的开头元素；尽管AvARRAY指向的是Perl看来array的起始位置，
-AvALLOC指向的才是数组的实际位置。它们通常都是一样的，但是shift操作是通过AvARRAY加1并且减少AvFILL和AvMAX的方式实现的。
-数组实际的位置只有在需要释放内存的时候才会被用到。
+与这种偏移的hack技巧类似的方法被应用于高效地移除或切除数组的开头元素；尽管C<AvARRAY>指向的是Perl看来array的起始位置，
+C<AvALLOC> 指向的才是数组的实际起始位置。
+它们通常都是一样的，但是 C<shift> 操作是通过 C<AvARRAY> 加1并且减少 C<AvFILL> 和 C<AvMAX>的方式实现的。
+数组实际的位置只有在需要释放内存的时候才会被用到。参见F<av.c>文件中的C<av_shift>。
 
 =head2 SV的结构
 
@@ -471,7 +472,8 @@ C<SV*>.  To access the scalar value, you must first dereference the return
 value.  However, you should check to make sure that the return value is
 not NULL before dereferencing it.
 
-记住hv_store和hv_getch返回SV**类型的值而不是SV*，为了获取scalar值，你必须先对返回值解引用。
+记住 C<hv_store> 和 C<hv_fetch> 返回 C<SV**> 类型的值而不是C<SV*>，
+为了获取scalar值，你必须先对返回值解引用。
 然而，你应该先检查返回值非NULL再解引用。
 
 The first of these two functions checks if a hash table entry exists, and the 
@@ -485,7 +487,7 @@ second deletes it.
 If C<flags> does not include the C<G_DISCARD> flag then C<hv_delete> will
 create and return a mortal copy of the deleted value.
 
-如果G_DEICAED标记不存在则hv_delete将会创建并返回一个被删除值的拷贝。
+如果 C<G_DISCARD> 标记不存在则 C<hv_delete> 将会创建并返回一个被删除值的拷贝。
 
 And more miscellaneous functions:
 
@@ -498,7 +500,7 @@ Like their AV counterparts, C<hv_clear> deletes all the entries in the hash
 table but does not actually delete the hash table.  The C<hv_undef> deletes
 both the entries and the hash table itself.
 
-和针对AV操作的其他对应函数一样，hv_clear删除哈希表中所有的键值，但不会删除哈希表。hv_undef同时删除键值和表。
+和针对AV操作的其他对应函数一样，C<hv_clear> 删除哈希表中所有的键值，但不会删除哈希表。C<hv_undef>同时删除键值和表。
 
 Perl keeps the actual data in a linked list of structures with a typedef of HE.
 These contain the actual key and value pointers (plus extra administrative
@@ -507,7 +509,7 @@ once you have an C<HE*>, to get the actual key and value, use the routines
 specified below.
 
 Perl将实际的值保存在使用HE typedef的结构体链表中。它们包含了实际的键和指向值的指针（以及其他用于管理的头部）。
-键是一个字符串指针；值是一个SV\*。然而，当你拥有一个HE*时，使用如下函数获取实际的键值：
+键是一个字符串指针；值是一个C<SV*>。然而，当你拥有一个C<HE*>时，使用如下函数获取实际的键值：
 
     I32    hv_iterinit(HV*);
             /* Prepares starting point to traverse hash table */
@@ -539,7 +541,7 @@ This returns NULL if the variable does not exist.
 
 The hash algorithm is defined in the C<PERL_HASH> macro:
 
-哈希算法是通过PERL_HASH宏定义的：
+哈希算法是通过C<PERL_HASH>宏定义的：
 
     PERL_HASH(hash, key, klen)
 
@@ -552,7 +554,7 @@ is only valid for the duration of a single perl process.
 See L<Understanding the Magic of Tied Hashes and Arrays> for more
 information on how to use the hash access functions on tied hashes.
 
-请看 '理解tied的哈希和数组的魔法' 这一节以获取更多关于如何使用哈希访问函数访问tied哈希的信息。
+请看 L<理解tied的哈希表和数组的魔法> 一节以获取更多关于如何使用哈希表访问函数访问tied哈希表的信息。
 
 =head2 哈希拓展API
 
@@ -575,14 +577,16 @@ of extension code that deals with hash structures.  These functions
 also allow passing of C<SV*> keys to C<tie> functions without forcing
 you to stringify the keys (unlike the previous set of functions).
 
-注意，这些函数使用SV\*类型的键，这样简化了需要处理哈希结构的代码。这些函数同样允许传递SV\*类型的键给tie函数而不需要你将键强转为字符串（和之前的那些函数不同）。
+注意，这些函数使用 C<SV*> 类型的键，这样简化了需要处理哈希结构的代码。
+这些函数同样允许传递C<SV*>类型的键给C<tie>函数而不需要你将键强转为字符串（和之前的那些函数不同）。
 
 They also return and accept whole hash entries (C<HE*>), making their
 use more efficient (since the hash number for a particular string
 doesn't have to be recomputed every time).  See L<perlapi> for detailed
 descriptions.
 
-它们同样返回并接受完整的哈希键值结构（HE*），使得它们更加高效（因为特定字符串的哈希值不用每次都重复计算）。请看perlapi以了解更多细节。
+它们同样返回并接受完整的哈希键值结构（C<HE*>），使得它们更加高效（因为特定字符串的哈希值不用每次都重复计算）。
+请看L<perlapi>以了解更多细节。
 
 The following macros must always be used to access the contents of hash
 entries.  Note that the arguments to these macros must be simple
@@ -601,7 +605,7 @@ L<perlapi> for detailed descriptions of these macros.
 These two lower level macros are defined, but must only be used when
 dealing with keys that are not C<SV*>s:
 
-这两个底层的宏只能被用于键不是SV*的情况。
+这两个底层的宏只能被用于键不是C<SV*>的情况。
 
     HeKEY(HE* he)
     HeKLEN(HE* he)
@@ -611,7 +615,8 @@ reference count of the stored C<val>, which is the caller's responsibility.
 If these functions return a NULL value, the caller will usually have to
 decrement the reference count of C<val> to avoid a memory leak.
 
-请注意hv_store和hv_store_ent都不会增加val的引用计数，这都是调用者需要做的。如果这些函数返回NULL值，调用者必须要减少引用计数的值以避免内存泄漏。
+请注意C<hv_store>和C<hv_store_ent>都不会增加C<val>的引用计数，这都是调用者需要做的。
+如果这些函数返回NULL值，调用者必须要减少C<val>的引用计数的值以避免内存泄漏。
 
 =head2 AVs，HVs和undefined值
 
@@ -621,7 +626,7 @@ Sometimes you have to store undefined values in AVs or HVs. Although
 this may be a rare case, it can be tricky. That's because you're
 used to using C<&PL_sv_undef> if you need an undefined SV.
 
-有时你需要在AVs和HVs中存储undefined值。尽管这样的情形很少，但是却会很诡异。因为如果你需要一个未定义SV的时候得用&PV_sv_undef。
+有时你需要在AVs和HVs中存储undefined值。尽管这样的情形很少，但是却会很诡异。因为如果你需要一个未定义SV的时候会习惯于使用C<&PL_sv_undef>。
 
 For example, intuition tells you that this XS code:
 
@@ -642,11 +647,11 @@ for indicating that an array element has not yet been initialized.
 Thus, C<exists $av[0]> would be true for the above Perl code, but
 false for the array generated by the XS code.
 
-不幸的是这不是真的。AV使用&PL_sv_undef作为元素没有被初始化的标识。应此exists $av[0]对于Perl代码来说是对的，但是对于XS来说却返回假。
+不幸的是这不是真的。AV使用&PL_sv_undef作为元素没有被初始化的标识。应此C<exists $av[0]>对于Perl代码来说为真，但是对于XS代码来说却为假。
 
 Other problems can occur when storing C<&PL_sv_undef> in HVs:
 
-当在HV中存储&PL_sv_undef的时候也会出问题：
+当在HV中存储C<&PL_sv_undef>的时候也会出问题：
 
     hv_store( hv, "key", 3, &PL_sv_undef, 0 );
 
@@ -664,14 +669,14 @@ in restricted hashes. This caused such hash entries not to appear
 when iterating over the hash or when checking for the keys
 with the C<hv_exists> function.
 
-在Perl5.8.0中，&PL_sv_undef也被用于在'受限'哈希表中标记占位符。
-这样会导致哈希键值在遍历哈希表或使用hv_exists的时候不会出现。
+在Perl5.8.0中，C<&PL_sv_undef>也被用于在'受限'哈希表中标记占位符。
+这样会导致哈希键值在遍历哈希表或使用C<hv_exists>的时候不会出现。
 
 You can run into similar problems when you store C<&PL_sv_yes> or
 C<&PL_sv_no> into AVs or HVs. Trying to modify such elements
 will give you the following error:
 
-当你将&PL_sv_yes或&PL_sv_no存入AV或HV的时候会遇到类似的问题。试图去改变这些元素的时候会产生如下错误：
+当你将C<&PL_sv_yes>或C<&PL_sv_no>存入AV或HV的时候会遇到类似的问题。试图去改变这些元素的时候会产生如下错误：
 
     Modification of a read-only value attempted
 
@@ -681,14 +686,14 @@ To make a long story short, you can use the special variables
 C<&PL_sv_undef>, C<&PL_sv_yes> and C<&PL_sv_no> with AVs and
 HVs, but you have to make sure you know what you're doing.
 
-长话短说，你可以将&PL_sv_undef，&PL_sv_yes或&PL_sv_no这些特殊变量用户AV和HV，
-但是请确保你知道自己在做什么。
+长话短说，你可以将C<&PL_sv_undef>，C<&PL_sv_yes>或C<&PL_sv_no>这些特殊变量用于AVs和HVs，
+但是请确保你清楚自己在做什么。
 
 Generally, if you want to store an undefined value in an AV
 or HV, you should not use C<&PL_sv_undef>, but rather create a
 new undefined value using the C<newSV> function, for example:
 
-如果你想在AV或HV中存储一个undef值的时候，你不应该使用&PL_sv_undef，
+如果你想在AV或HV中存储一个undefined值的时候，不应该使用C<&PL_sv_undef>，
 而是用newSV创建一个新的未定义值，例如：
 
     av_store( av, 42, newSV(0) );
@@ -715,7 +720,9 @@ functions are identical except that C<newRV_inc> increments the reference
 count of the C<thing>, while C<newRV_noinc> does not.  For historical
 reasons, C<newRV> is a synonym for C<newRV_inc>.
 
-参数thing可以是SV*，AV\*或HV*中的任意一种。这两个函数除了newRV_inc会增加thing的引用计数外，其他方面都是完全一样。newTV就是newRV_inc的匿名方法（某些历史原因导致的）。
+参数C<thing>可以是C<SV*>，C<AV*>或C<HV*>中的任意一种。
+这两个函数除了C<newRV_inc>会增加C<thing>的引用计数外，其他方面都是完全一样。
+C<newRV>就是C<newRV_inc>的匿名方法（某些历史原因导致的）。
 
 Once you have a reference, you can use the following macro to dereference
 the reference:
@@ -727,7 +734,7 @@ the reference:
 then call the appropriate routines, casting the returned C<SV*> to either an
 C<AV*> or C<HV*>, if required.
 
-然后调用合适的方法，将返回的SV*强转为AV\*或HV*。
+然后调用合适的方法，如果需要的话，将返回的C<SV*>强转为C<AV*>C<HV*>。
 
 To determine if an SV is a reference, you can use the following macro:
 
@@ -754,7 +761,7 @@ The most useful types that will be returned are:
 
 See L<perlapi/svtype> for more details.
 
-请参开 perlapi/svtype 以获得更多细节。
+请参考 L<perlapi/svtype> 以获得更多细节。
 
 =head2 被blessed的引用和类对象
 
@@ -765,7 +772,8 @@ OO lexicon, an object is simply a reference that has been blessed into a
 package (or class).  Once blessed, the programmer may now use the reference
 to access the various methods in the class.
 
-引用同样可以被用于支持面向对象编程。在Perl的OO语法中，一个对象就是一个被blessed到包（或类）之中的引用。一旦被blessed，程序员就可以使用这个引用访问类的各种方法。
+引用同样可以被用于支持面向对象编程。在Perl的OO语法中，一个对象就是一个被blessed到包（或类）之中的引用。
+一旦被blessed，程序员就可以使用这个引用访问类的各种方法。
 
 A reference can be blessed into a package with the following function:
 
