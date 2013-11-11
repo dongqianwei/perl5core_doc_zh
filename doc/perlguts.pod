@@ -149,12 +149,16 @@ va_list argument. The fifth function extends the string stored in the first
 SV with the string stored in the second SV.  It also forces the second SV
 to be interpreted as a string.
 
-第一个函数使用strlen计算需要添加的字符串长度。第二个函数需要你自己制定字符串长度。第三个函数以类似于sprintf的方式格式化字符串并将结果添加到末尾。第四个函数类似于vsprintf，你可以指定一个SV数组的地址和长度以取代va_list参数。第五个函数用第二个SV*中的字符串拓展第一个参数。当然它会将第二个参数解析为字符串类型。
+第一个函数使用C<strlen>计算需要添加的字符串长度。
+第二个函数需要你自己指定字符串长度。
+第三个函数以类似于C<sprintf>的方式格式化字符串并将结果添加到末尾。
+第四个函数类似于C<vsprintf>，你可以指定一个SV数组的地址和长度以取代va_list参数。
+第五个函数用第二个SV*中的字符串拓展第一个参数。当然它会将第二个参数解析为字符串类型。
 
 The C<sv_cat*()> functions are not generic enough to operate on values that
 have "magic".  See L<Magic Virtual Tables> later in this document.
 
-sv_cat*()系列的函数对于有"魔法的"值来说并不通用。请看下面的Magic Virtual Tables章节。
+C<sv_cat*()>系列的函数对于有"魔法的"值来说并不通用。请看下面的L<Magic Virtual Tables>章节。
 
 If you know the name of a scalar variable, you can get a pointer to its SV
 by using the following:
@@ -206,12 +210,13 @@ There are also the two values C<PL_sv_yes> and C<PL_sv_no>, which contain
 boolean TRUE and FALSE values, respectively.  Like C<PL_sv_undef>, their
 addresses can be used whenever an C<SV*> is needed.
 
-同样PL_sv_yes和PL_sv_no是两个包含了布尔值TRUE和FALSE的值。和PL_sv_undef一样，它们的地址同样可以被用于任何期望SV*的地方。
+同样C<PL_sv_yes>和C<PL_sv_no>是两个包含了布尔值TRUE和FALSE的值。
+和C<PL_sv_undef>一样，它们的地址同样可以被用于任何期望C<SV*>的地方。
 
 Do not be fooled into thinking that C<(SV *) 0> is the same as C<&PL_sv_undef>.
 Take this code:
 
-不要认为(SV *)0和&PL_sv_undef是一样的，请看以下代码：
+不要认为C<(SV *) 0>和C<&PL_sv_undef>是一样的，请看以下代码：
 
     SV* sv = (SV*) 0;
     if (I-am-to-return-a-real-value) {
@@ -226,12 +231,12 @@ bus error, or just weird results.  Change the zero to C<&PL_sv_undef> in the
 first line and all will be well.
 
 这段代码在应当返回实数的时候返回42，否则返回undef。但是它实际上返回的是一个NULL指针，
-将会导致内存段冲突或错误或一些奇怪的情况。将第一行中的0修改为&PL_sv_undef会解决这个问题。
+将会导致内存段冲突或错误或一些奇怪的情况。将第一行中的0修改为C<&PL_sv_undef>会解决这个问题。
 
 To free an SV that you've created, call C<SvREFCNT_dec(SV*)>.  Normally this
 call is not necessary (see L<Reference Counts and Mortality>).
 
-为了释放一个你创建的SV，调用SvREFCNT_dec(SV*)。通常你不需要调用这个方法（请看引用计数与销毁）。
+为了释放一个你创建的SV，调用C<SvREFCNT_dec(SV*)>。通常你不需要调用这个方法（请看L<引用计数与销毁>）。
 
 =head2 偏移
 
@@ -247,15 +252,15 @@ effect, and it puts the number of bytes chopped off into the IV field
 of the SV. It then moves the PV pointer (called C<SvPVX>) forward that
 many bytes, and adjusts C<SvCUR> and C<SvLEN>.
 
-Perl提供了函数sv_chop用于高效地移除字符串开头的字符；你传入一个SV和一个指向PV某处地址的指针，它将会移除指针前的全部字符。
-它的效率源于一点hack技巧：它实际上并没有真正移除掉这些字符，sc_chop设置了OOK(offset OK)字段用于向其他函数表明使用了这种偏移的hack技巧，
-同时它将被移除的字符的个数存入到SV中的IV字段。然后它将PV指针（称作SvPVX）向前移动那么多字节，并适配SvCUR和SvLEN。
+Perl提供了函数 C<sv_chop> 用于高效地移除字符串开头的字符；你传入一个SV和一个指向PV某处地址的指针，它将会移除指针前的全部字符。
+它的效率源于一点hack技巧：它实际上并没有真正移除掉这些字符，<sv_chop>设置了C<OOK>(offset OK)字段用于向其他函数表明使用了这种偏移的hack技巧，
+同时它将被移除的字符的个数存入到SV中的IV字段。然后它将PV指针（称作C<SvPVX>）向前移动那么多字节，并适配 C<SvCUR> 和 C<SvLEN>。
 
 Hence, at this point, the start of the buffer that we allocated lives
 at C<SvPVX(sv) - SvIV(sv)> in memory and the PV pointer is pointing
 into the middle of this allocated storage.
 
-因此在这一点上，我们分配的缓冲区的起始点位于内存中的SvPVX(sv) - SvIV(sv)，而PV指针指向分配的内存中间的区域。
+因此在这一点上，我们分配的缓冲区的起始点位于内存中的 C<SvPVX(sv) - SvIV(sv)> ，而PV指针指向分配的内存中间的区域。
 
 This is best demonstrated by example:
 
@@ -276,8 +281,8 @@ portion of the string between the "real" and the "fake" beginnings is
 shown in parentheses, and the values of C<SvCUR> and C<SvLEN> reflect
 the fake beginning, not the real one.
 
-这里被切除的字符序列长度1被存如IV中，而且Devel::Peek::Dump包提示我们这是一个偏移量。
-在实际和伪起始位置之间的字符串显示在括号中，SvCUR和SvLEN表示的是伪起始位置，不是实际的值。
+这里被切除的字符序列长度1被存如IV中，而且C<Devel::Peek::Dump>包提示我们这是一个偏移量。
+在实际和伪起始位置之间的字符串显示在括号中，C<SvCUR>和C<SvLEN>表示的是伪起始位置，不是实际的值。
 
 Something similar to the offset hack is performed on AVs to enable
 efficient shifting and splicing off the beginning of the array; while
@@ -297,13 +302,13 @@ AvALLOC指向的才是数组的实际位置。它们通常都是一样的，但�
 =head2 What's Really Stored in an SV?
 
 Recall that the usual method of determining the type of scalar you have is
-to use C<Sv\*OK> macros.  Because a scalar can be both a number and a string,
+to use C<Sv*OK> macros.  Because a scalar can be both a number and a string,
 usually these macros will always return TRUE and calling the C<Sv*V>
 macros will do the appropriate conversion of string to integer/double or
 integer/double to string.
 
-请回忆，为了判断SV的实际类型我们通常会使用Sv\*OK系列的宏。由于scalar可以同时是一个数字和字符串，
-通常这些宏都会返回TRUE，并且调用调用Sv\*V系列的宏会自动对SV作出合适的转换。
+请回忆，为了判断SV的实际类型我们通常会使用C<Sv*OK>系列的宏。由于scalar可以同时是一个数字和字符串，
+通常这些宏都会返回TRUE，并且调用调用C<Sv*V>系列的宏会自动对SV作出合适的转换。
 
 If you I<really> need to know if you have an integer, double, or string
 pointer in an SV, you can use the following three macros instead:
@@ -333,7 +338,7 @@ IV with loss, SvIOKp, SvNOKp and SvNOK will be set, while SvIOK wont be.
 
 In general, though, it's best to use the C<Sv*V> macros.
 
-总而言之，最好使用Sv\*V系列的宏。
+总而言之，最好使用C<Sv*V>系列的宏。
 
 =head2 使用AVs
 
@@ -3154,9 +3159,15 @@ call, since it is always passed as an extra argument.  Depending on
 your needs for simplicity or efficiency, you may mix the previous
 two approaches freely.
 
+这种实现不许要通过函数主动获取上下文，因为它总是通过一个额外参数传进来。
+基于你追求的是效率还是实现上的简单，你可以任意混合以上两种用法。
+
 Never add a comma after C<pTHX> yourself--always use the form of the
 macro with the underscore for functions that take explicit arguments,
 or the form without the argument for functions with no explicit arguments.
+
+永远不要在C<pTHX>后面加逗号，记住在需要额外参数的函数上需要使用加下划线的宏，
+对于没有参数的函数用没有下划线的形式。
 
 If one is compiling Perl with the C<-DPERL_GLOBAL_STRUCT> the C<dVAR>
 definition is needed if the Perl global variables (see F<perlvars.h>
@@ -3165,11 +3176,20 @@ used (the C<dTHX> includes the C<dVAR> if necessary).  One notices
 the need for C<dVAR> only with the said compile-time define, because
 otherwise the Perl global variables are visible as-is.
 
+当Perl编译时打开了C<-DPERL_GLOBAL_STRUCT>，
+如果你的函数需要访问Perl全局变量（参见F<perlvars.h>或者F<globvar.sym>）
+且没有使用C<dTHX>的时候（C<dTHX>会在必要的时候包含C<dVAR>）就需要C<dVAR>定义了。
+注意只有在所谓的编译器定义才需要C<dVAR>，因为否则的话Perl全局变量已经是可见的了。
+
+=head2 当在多线程中调用perl的时候需要注意什么？
+
 =head2 Should I do anything special if I call perl from multiple threads?
 
 If you create interpreters in one thread and then proceed to call them in
 another, you need to make sure perl's own Thread Local Storage (TLS) slot is
 initialized correctly in each of those threads.
+
+如果你在一个线程中创建了解释其并在另一个线程中调用，你需要保证perl自己的线程本地存储（TLS）在每一个线程都被正确初始化了。
 
 The C<perl_alloc> and C<perl_clone> API functions will automatically set
 the TLS slot to the interpreter they created, so that there is no need to do
@@ -3180,10 +3200,17 @@ thread before calling any functions in the Perl API on that particular
 interpreter.  This is done by calling the C<PERL_SET_CONTEXT> macro in that
 thread as the first thing you do:
 
+C<perl_alloc> 和 C<perl_clone> API函数都会在它们创建的解释器上自动设置TLS，
+因此如果解释器都是通过创建它的线程访问且该线程不会创建或调用其他解释器2的话是不许要做任何操作的。
+如果不是这样，以需要在某个解释器上调用任何Perl API之前都需要设置当前线程的TLS。
+也就是说在那个线程中首先要做的是调用C<PERL_SET_CONTEXT>宏：
+
 	/* do this before doing anything else with some_perl */
 	PERL_SET_CONTEXT(some_perl);
 
 	... other Perl API calls on some_perl go here ...
+
+=head2 未来的计划以及PERL_IMPLICIT_SYS
 
 =head2 Future Plans and PERL_IMPLICIT_SYS
 
@@ -3194,6 +3221,10 @@ about the environment it's running on.  This is enabled with the
 PERL_IMPLICIT_SYS macro.  Currently it only works with USE_ITHREADS on
 Windows.
 
+正如PERL_IMPLICIT_CONTEXT为解释器提供了打包所有当前解释器所知的关于自身的信息并将其传递的能力，
+同样有使得解释器可以打包任何它知道关于运行环境的信息的计划。这个能力是通过打开PERL_IMPLICIT_SYS宏实现的。
+目前它值在USE_ITHREADS的Windows系统版本上可用。
+
 This allows the ability to provide an extra pointer (called the "host"
 environment) for all the system calls.  This makes it possible for
 all the system stuff to maintain their own state, broken down into
@@ -3203,9 +3234,17 @@ more ambitious host (like the one that would do fork() emulation) all
 the extra work needed to pretend that different interpreters are
 actually different "processes", would be done here.
 
+它能够为所有的系统调用提供额外的指针（称作"宿主"环境）。这使得所有的系统可以维护其自身的状态，
+将其分解到七个C结构中。对于默认的perl执行程序它们都是通用系统调用(参考 F<win32/perllib.c>)的简单封装，
+但是对于更加有野心的宿主（例如会做fork()模拟的那种）那些为了假装不同的解释器实际上是不同的“进程”的额外工作都要在这里做。
+
 The Perl engine/interpreter and the host are orthogonal entities.
 There could be one or more interpreters in a process, and one or
 more "hosts", with free association between them.
+
+Perl 引擎/解释器与宿主都是正交的。一个进程中可以有多个解释器，多个"宿主"，它们之间的关系都是自由的。
+
+=head1 内部函数
 
 =head1 Internal Functions
 
