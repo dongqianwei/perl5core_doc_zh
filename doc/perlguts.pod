@@ -813,7 +813,7 @@ The following function copies the pointer value (I<the address, not the
 string!>) into an SV whose reference is rv.  SV is blessed if C<classname>
 is non-null.
 
-下面的函数拷贝指针的值到rv引用指向的SV里。如果classname非空的话SV将被blessed。
+下面的函数拷贝指针的值到rv引用指向的SV里。如果C<classname>非空的话SV将被blessed。
 
 	SV* sv_setref_pv(SV* rv, const char* classname, void* pv);
 
@@ -821,7 +821,7 @@ The following function copies a string into an SV whose reference is C<rv>.
 Set length to 0 to let Perl calculate the string length.  SV is blessed if
 C<classname> is non-null.
 
-下面的函数将字符串拷贝到rv指向的SV里，当length为0的时候Perl会自动计算字符串的长度。如果classname非空的话SV将被blessed。
+下面的函数将字符串拷贝到C<rv>指向的SV里，当length为0的时候Perl会自动计算字符串的长度。如果C<classname>非空的话SV将被blessed。
 
     SV* sv_setref_pvn(SV* rv, const char* classname, char* pv,
                                                          STRLEN length);
@@ -845,7 +845,7 @@ containing a class name. This is the function implementing the
 C<UNIVERSAL::isa> functionality.
 
 下面的函数测试SV是否继承自某个特定的类。SV既可以是一个被blessed过的引用也可以是包含类名的字符串。
-就是这个函数实现了UNIVERSAL::ISA的功能。
+就是这个函数实现了C<UNIVERSAL::isa>的功能。
 
 	bool sv_derived_from(SV* sv, const char* name);
 
@@ -883,8 +883,6 @@ C<GV_ADD> argument to enable certain extra features.  Those bits are:
 
 =item GV_ADDMULTI
 
-* GV_ADDMULTI
-
 Marks the variable as multiply defined, thus preventing the:
 
 标记这个变量是多重定义的，应此避免了：
@@ -893,13 +891,11 @@ Marks the variable as multiply defined, thus preventing the:
 
 warning.
 
-    名称为 'varname' 的变量只适用了一次：可能为打字错误。
+    名称为 'varname' 的变量只适用了一次：可能为打字错误
 
 的警告。
 
 =item GV_ADDWARN
-
-* GV_ADDWARN
 
 Issues the warning:
 
@@ -918,7 +914,7 @@ Issues the warning:
 If you do not specify a package name, the variable is created in the current
 package.
 
-如果你没有指定包名的的阿虎，变量将会创建在在当前包中。
+如果你没有指定包名，变量将会创建在在当前包中。
 
 =head2 引用计数和销毁
 
@@ -929,14 +925,16 @@ AVs, or HVs (xV for short in the following) start their life with a
 reference count of 1.  If the reference count of an xV ever drops to 0,
 then it will be destroyed and its memory made available for reuse.
 
-Perl使用引用计数的垃圾收集机制。在SV，AV或HV（以下用xV代替）生命周期的开始它们的引用计数被初始化为1。如果xV的引用计数降低到0，它将会被销毁以释放内存。
+Perl使用引用计数的垃圾收集机制。在SV，AV或HV（以下用xV代替）生命周期的开始它们的引用计数被初始化为1。
+如果xV的引用计数降低到0，它将会被销毁以释放内存。
 
 This normally doesn't happen at the Perl level unless a variable is
 undef'ed or the last variable holding a reference to it is changed or
 overwritten.  At the internal level, however, reference counts can be
 manipulated with the following macros:
 
-这通常不会发生在Perl语言的层面，除非一个变量被执行undef操作或者最有一个保存引用的变量被修改或覆盖。在Perl内部实现的层面可以通过以下宏管理引用计数。
+这通常不会发生在Perl语言的层面，除非一个变量被执行undef操作或者最有一个保存引用的变量被修改或覆盖。
+在Perl内部实现的层面可以通过以下宏管理引用计数。
 
     int SvREFCNT(SV* sv);
     SV* SvREFCNT_inc(SV* sv);
@@ -948,7 +946,8 @@ creates a reference to the specified argument.  As a side effect,
 it increments the argument's reference count.  If this is not what
 you want, use C<newRV_noinc> instead.
 
-还有一个可以管理其参数引用计数的函数。newRV_inc可以创建它参数的一个引用。它的副作用是增加其参数的引用计数。如果这不是你想要的效果，使用newRV_noinc来代替。
+还有一个可以管理其参数引用计数的函数。newRV_inc可以创建它参数的一个引用。
+它的副作用是增加其参数的引用计数。如果这不是你想要的效果，使用newRV_noinc来代替。
 
 For example, imagine you want to return a reference from an XSUB function.
 Inside the XSUB routine, you create an SV which initially has a reference
@@ -961,14 +960,19 @@ reference count of the original SV is decreased to one and nothing happens.
 The SV will hang around without any way to access it until Perl itself
 terminates.  This is a memory leak.
 
-例如，想象一下你想要从XSUB函数返回一个引用。在XSUB函数内，你创建了一个引用计数为1的SV。然后你调用了newRV_inc，传入刚刚创建的SV，它会将对SV的引用作为一个新的SV返回。此时你传入的SV的引用计数已经是2了。现在你将这个引用从XSUB函数中返回并且忘掉了传入的那个SV。但是Perl没有！当返回的引用被销毁有，原先那个SV的引用计数变成1，什么都不会发生。这个SV将会一直存在直到Perl进程终止。这就是一个内存泄漏。
+例如，想象一下你想要从XSUB函数返回一个引用。在XSUB函数内，你创建了一个引用计数为1的SV。
+然后你调用了newRV_inc，传入刚刚创建的SV，它会将对SV的引用作为一个新的SV返回。
+此时你传入的SV的引用计数已经是2了。现在你将这个引用从XSUB函数中返回并且忘掉了传入的那个SV。
+但是Perl没有！当返回的引用被销毁有，原先那个SV的引用计数变成1，什么都不会发生。
+这个SV将会一直存在直到Perl进程终止。这就是一个内存泄漏。
 
 The correct procedure, then, is to use C<newRV_noinc> instead of
 C<newRV_inc>.  Then, if and when the last reference is destroyed,
 the reference count of the SV will go to zero and it will be destroyed,
 stopping any memory leak.
 
-正确的做法是使用newRV_noinc取代newRV_inc。然后如果最后一个引用被销毁，SV的引用计数变为0它将会被销毁，避免了内存泄漏。
+正确的做法是使用newRV_noinc取代newRV_inc。
+然后如果最后一个引用被销毁，SV的引用计数变为0它将会被销毁，避免了内存泄漏。
 
 There are some convenience functions available that can help with the
 destruction of xVs.  These functions introduce the concept of "mortality".
@@ -980,7 +984,10 @@ reference count decremented depends on two macros, SAVETMPS and FREETMPS.
 See L<perlcall> and L<perlxs> for more details on these macros.
 
 还有一些更加方便的函数可以帮助你销毁xV。这些函数引入了"死亡性"这个概念。
-一个xV是"将死的"如果它的引用计数被标记为"减少的"，但是并没有实际减少而是"延迟到之后再减少"。一般来说"延迟之后"意味着一条Perl语句，例如调用一个XSUB函数。"将死"的xV的引用计数实际减少的时机是由两个宏决定的，SAVETMPS和FREETMPS。请看perlcall和perlxs以获得更多关于这些宏的细节。
+一个xV是"将死的"如果它的引用计数被标记为"减少的"，但是并没有实际减少而是"延迟到之后再减少"。
+一般来说"延迟之后"意味着一条Perl语句，例如调用一个XSUB函数。
+"将死"的xV的引用计数实际减少的时机是由两个宏决定的，SAVETMPS和FREETMPS。
+请看perlcall和perlxs以获得更多关于这些宏的细节。
 
 "Mortalization" then is at its simplest a deferred C<SvREFCNT_dec>.
 However, if you mortalize a variable twice, the reference count will
@@ -995,7 +1002,9 @@ is made mortal to have it cleaned up automatically when it's popped off
 the stack. Similarly, results returned by XSUBs (which are pushed on the
 stack) are often made mortal.
 
-"将死"的SV通常被用于那些被分配在perl的栈上的SV。例如一个被创建用于传入一个数字到到函数中的SV，将被设置为'将死的'以使其在被栈弹出时自动释放。同样的，XSUB返回的结果（被放置到栈上）通常也会被设置为"将死的"。
+"将死"的SV通常被用于那些被分配在perl的栈上的SV。
+例如一个被创建用于传入一个数字到到函数中的SV，将被设置为'将死的'以使其在被栈弹出时自动释放。
+同样的，XSUB返回的结果（被放置到栈上）通常也会被设置为"将死的"。
 
 To create a mortal variable, use the functions:
 
@@ -1011,8 +1020,10 @@ third creates a mortal copy of an existing SV.
 Because C<sv_newmortal> gives the new SV no value, it must normally be given one
 via C<sv_setpv>, C<sv_setiv>, etc. :
 
-第一个调用创建一个没有值的将死SV，第二个函数将一个已经存在的SV转为将死的SV（也就是说延迟了一次SvREFCNT_dec的调用），第三个函数创建了一个已存在SV的将死SV拷贝。
-因为sv_newmortal没有给新建的SV设置任何值，它通常必须要用sv_setpv或sv_setiv等设置一个值:
+第一个调用创建一个没有值的将死SV，第二个函数将一个已经存在的SV转为将死的SV（也就是说延迟了一次SvREFCNT_dec的调用），
+第三个函数创建了一个已存在SV的将死SV拷贝。
+因为sv_newmortal没有给新建的SV设置任何值，
+它通常必须要用sv_setpv或sv_setiv等设置一个值:
 
     SV *tmp = sv_newmortal();
     sv_setiv(tmp, an_integer);
@@ -1055,7 +1066,8 @@ name), and each value in the hash table is a GV (Glob Value).  This GV
 in turn contains references to the various objects of that name,
 including (but not limited to) the following:
 
-一个stash是一个包括了一个包里面全部变量定义的哈希。stash中的每一个键都是一个符号名（被所有不同类型的同名对象共享），哈希表中的每一个值都是一个GV（Glob Value）。
+一个stash是一个包括了一个包里面全部变量定义的哈希。stash中的每一个键都是一个符号名（被所有不同类型的同名对象共享），
+哈希表中的每一个值都是一个GV（Glob Value）。
 这个GV同样包含了各种叫那个名字的对象的引用，包括（但不限于）以下几种：
 
     Scalar Value
@@ -1071,12 +1083,12 @@ string "::" to the package name.  The items in the C<Foo> package are in
 the stash C<Foo::> in PL_defstash.  The items in the C<Bar::Baz> package are
 in the stash C<Baz::> in C<Bar::>'s stash.
 
-有一个称作PL_defstash的stash存储了main包中的全部成员。要得到其他包中的成员，在包名后添加"::"。
-Foo包中的成员在PL_defstash中名为Foo::的stash中。Bar::Baz包中的成员在Bar::的stash中的Baz::的stash中。
+有一个称作C<PL_defstash>的stash存储了C<main>包中的全部成员。要得到其他包中的成员，在包名后添加"::"。
+C<Foo>包中的成员在PL_defstash中名为C<Foo::>的stash中。C<Bar::Baz>包中的成员在C<Baz::>的stash中的C<Bar::>的stash中。
 
 To get the stash pointer for a particular package, use the function:
 
-为了得到特定包的stash执政，使用下列函数：
+为了得到特定包的stash指针，使用下列函数：
 
     HV*  gv_stashpv(const char* name, I32 flags)
     HV*  gv_stashsv(SV*, I32 flags)
@@ -1085,15 +1097,16 @@ The first function takes a literal string, the second uses the string stored
 in the SV.  Remember that a stash is just a hash table, so you get back an
 C<HV*>.  The C<flags> flag will create a new package if it is set to GV_ADD.
 
-第一个函数需要传入一个字面字符串，第二个使用SV中储存的字符串。记住stash仅仅是一个哈希表，因此你可以获取一个HV*返回值。
-当flags标记被设置为GV_ADD的时候将会创建一个新包。
+第一个函数需要传入一个字面字符串，第二个使用SV中储存的字符串。记住stash仅仅是一个哈希表，因此你可以获取一个C<HV*>返回值。
+当C<flags>标记被设置为GV_ADD的时候将会创建一个新包。
 
 The name that C<gv_stash*v> wants is the name of the package whose symbol table
 you want.  The default package is called C<main>.  If you have multiply nested
 packages, pass their names to C<gv_stash*v>, separated by C<::> as in the Perl
 language itself.
 
-gv_stash*v系列函数需要的参数name就是你需要的符号表所属的包的名字。默认的包名为main。如果你有多重嵌套的包，请用::将它们分割传入，就像在Perl语言中所做的那样。
+C<gv_stash*v>系列函数需要的参数name就是你需要的符号表所属的包的名字。默认的包名为C<main>。
+如果你有多重嵌套的包，请用C<::>将它们分割传入C<gv_stash*v>，就像在Perl语言中所做的那样。
 
 Alternately, if you have an SV that is a blessed reference, you can find
 out the stash pointer by using:
@@ -1119,11 +1132,11 @@ where the first argument, an C<SV*>, must be a reference, and the second
 argument is a stash.  The returned C<SV*> can now be used in the same way
 as any other SV.
 
-第一个参数SV\*必须是引用类型，第二次参数是一个stash。返回的SV\*可以像其他任何SV一样使用。
+第一个参数C<SV*>必须是引用类型，第二次参数是一个stash。返回的C<SV*>可以像其他任何SV一样使用。
 
 For more information on references and blessings, consult L<perlref>.
 
-参考prelref以获取关于引用和bless的更多信息。
+参考L<perlref>以获取关于引用和bless的更多信息。
 
 =head2 双类型SV
 
@@ -1139,7 +1152,7 @@ Some scalar variables contain more than one type of scalar data.  For
 example, the variable $! contains either the numeric value of C<errno>
 or its string equivalent from either strerror or sys_errlist[].
 
-一些scalar变来那个包含一种以上类型的scalar数据。例如，变量$!含了errno的数字值或它的等价字符串（来源于strerror或sys_errlist[]）
+一些scalar变来那个包含一种以上类型的scalar数据。例如，变量$!含了C<errno>的数字值或它的等价字符串（来源于strerror或sys_errlist[]）
 
 To force multiple data values into an SV, you must do two things: use the
 sv_set*v routines to add the additional scalar type, then set a flag
@@ -3530,10 +3543,13 @@ such manual which details all the functions which are available to XS
 writers. L<perlintern> is the autogenerated manual for the functions
 which are not part of the API and are supposedly for internal use only.
 
-
+我们正努力为内部函数添加文档并根据它们自动生成索引手册- L<perlapi>是其中一部描述所有XS作者可用函数的手册。
+L<perlintern>是根据那些不属于API，只支持内部使用的函数自动生成的手册。
 
 Source documentation is created by putting POD comments into the C
 source, like this:
+
+源文件文档是通过向C源码中添加POD注释实现的，例如这样：
 
  /*
  =for apidoc sv_setiv
@@ -3547,6 +3563,10 @@ source, like this:
 Please try and supply some documentation if you add functions to the
 Perl core.
 
+如果你要向Perl核心添加函数的话请尝试提供一些文档。
+
+=head2 向后兼容
+
 =head2 Backwards compatibility
 
 The Perl API changes over time. New functions are added or the interfaces
@@ -3554,8 +3574,14 @@ of existing functions are changed. The C<Devel::PPPort> module tries to
 provide compatibility code for some of these changes, so XS writers don't
 have to code it themselves when supporting multiple versions of Perl.
 
+Perl API是不断变化的。新的函数不断添加，已有函数不断改变。C<Devel::PPPort>模块试图为这些变化提供适配代码，
+因此XS作者不用自己去写这些代码就可以支持多版本的Perl了。
+
 C<Devel::PPPort> generates a C header file F<ppport.h> that can also
 be run as a Perl script. To generate F<ppport.h>, run:
+
+C<Devel::PPPort>同样以运行一个脚本的形式生成一个C头文件F<ppport.h>。
+运行：
 
     perl -MDevel::PPPort -eDevel::PPPort::WriteFile
 
@@ -3563,15 +3589,26 @@ Besides checking existing XS code, the script can also be used to retrieve
 compatibility information for various API calls using the C<--api-info>
 command line switch. For example:
 
+除了检查已存在的XS代码外，这个脚本同样可以通过C<--api-info>选项追溯各个版本API调用的适配信息。
+例如这样：
+
   % perl ppport.h --api-info=sv_magicext
 
 For details, see C<perldoc ppport.h>.
+
+参见C<perldoc ppport.h>以获取更多细节。
+
+=head1 Unicode 支持
 
 =head1 Unicode Support
 
 Perl 5.6.0 introduced Unicode support. It's important for porters and XS
 writers to understand this support and make sure that the code they
 write does not corrupt Unicode data.
+
+Perl 5.6.0 引入Unicode支持。理解这种支持以确保不会写出导致Unicode数据损坏的代码对于porters和XS作者非常重要。
+
+=head2 那么什么是Unicode？
 
 =head2 What B<is> Unicode, anyway?
 
@@ -3584,11 +3621,20 @@ alphabet in the upper range of the sequence, between 128 and 255. Of
 course, we then ended up with plenty of variants that weren't quite
 ASCII, and the whole point of it being a standard was lost.
 
+很久很久以前我们大部分使用的都是ASCII码。ASCII最大的问题在于它是专门为美国设置的。
+当然着并非实际的问题；问题在于对不使用罗马字母表的人来说ASCII不是非常有用。
+其他语言的用户曾经将序列的上半部分，128到255之间，用于他们自己的字母表。
+当然这样导致了各种不属于ASCII的变种，标准的意义就没有了。
+
 Worse still, if you've got a language like Chinese or
 Japanese that has hundreds or thousands of characters, then you really
 can't fit them into a mere 256, so they had to forget about ASCII
 altogether, and build their own systems using pairs of numbers to refer
 to one character.
+
+
+更加糟糕的是如果你使用的是有成百上千字符的汉语或日语，那就无法用256个字符表示了，
+因此只能完全放弃ASCII而使用数字组合建立他们自己的系统。
 
 To fix this, some people formed Unicode, Inc. and
 produced a new character set containing all the characters you can
@@ -3596,6 +3642,12 @@ possibly think of and more. There are several ways of representing these
 characters, and the one Perl uses is called UTF-8. UTF-8 uses
 a variable number of bytes to represent a character. You can learn more
 about Unicode and Perl's Unicode model in L<perlunicode>.
+
+为了解决这个问题，一些人创建了Unicode标准。制定了一个包含所有你能想象到的字符的字母集。
+表示这些字符的方式有很多中，Perl使用的方式称作UTF-8。UTF-8使用变长数量的字节代表字符。
+你可以参看L<perlunicode>以获取关于Unicode和Perl Unicode模型的更多信息。
+
+=head2 我怎样识别UTF-8字符串？
 
 =head2 How can I recognise a UTF-8 string?
 
@@ -3606,12 +3658,23 @@ C<v196.172>. Unfortunately, the non-Unicode string C<chr(196).chr(172)>
 has that byte sequence as well. So you can't tell just by looking - this
 is what makes Unicode input an interesting problem.
 
+你无法识别。因为UTF-8数据与其他数据一样是存在字节中的。Unicode字符200，
+（16进制的C<0xC8>）抑音的大写E，是通过两个字节C<v196.172>表示的。
+不幸的是，非Unicode字符串C<chr(196).chr(172)>的字节序列与之相同。
+所以你无法识别出你看到的是什么-这使得如何判断什么是Unicode输入成为一个有趣的问题。
+
 In general, you either have to know what you're dealing with, or you
 have to guess.  The API function C<is_utf8_string> can help; it'll tell
 you if a string contains only valid UTF-8 characters. However, it can't
 do the work for you. On a character-by-character basis,
 C<is_utf8_char_buf>
 will tell you whether the current character in a string is valid UTF-8. 
+
+一般而言，要们你必须知道你在处理的数据是什么，要么你得猜出来。
+C<is_utf8_string>API函数可以帮助你；它会告诉你一个字符串是否只包含合法的UTF-8字符。
+但是它不能帮你完成你的工作。对于字符逐个判断，C<is_utf8_char_bug>将会告诉你字符串的当前字符是否为合法的UTF-8。
+
+=head2 UTF-8如何表示Unicode字符？
 
 =head2 How does UTF-8 represent Unicode characters?
 
@@ -3622,8 +3685,15 @@ continues up to character 191, which is C<v194.191>. Now we've run out of
 bits (191 is binary C<10111111>) so we move on; 192 is C<v195.128>. And
 so it goes on, moving to three bytes at character 2048.
 
+如上文所提到的那样，UTF-8使用变长数量的字节存储一个字符。
+字符值在0...127之间的存坐在一个字节中，就和ASCII标准中的一样。字符128保存为C<v194.128>；
+这样持续到字符191，也就是C<v194.191>。此时我们既要越界了（191二进制为C<10111111>），所以继续；
+192是C<v195.128>。然后接着来，直到字符2048开始使用三个字节。
+
 Assuming you know you're dealing with a UTF-8 string, you can find out
 how long the first character in it is with the C<UTF8SKIP> macro:
+
+假设你知道你正在处理UTF-8字符串，你可以通过C<UTF8SKIP>得到第一个字符的长度：
 
     char *utf = "\305\233\340\240\201";
     I32 len;
@@ -3636,6 +3706,9 @@ Another way to skip over characters in a UTF-8 string is to use
 C<utf8_hop>, which takes a string and a number of characters to skip
 over. You're on your own about bounds checking, though, so don't use it
 lightly.
+
+第二种在UTF-8字符串中跳过字符的方式是使用C<utf8_hop>，它传入一个字符串和一个需要跳过字符的数量。
+你需要字节解决边界检查问题，所以不要随便使用这个函数。
 
 All bytes in a multi-byte UTF-8 character will have the high bit set,
 so you can test if you need to do something special with this
