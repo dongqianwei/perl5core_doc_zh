@@ -3715,6 +3715,9 @@ so you can test if you need to do something special with this
 character like this (the UTF8_IS_INVARIANT() is a macro that tests
 whether the byte can be encoded as a single byte even in UTF-8):
 
+一个多字节的UTF-8字符中的所有字节的高位比特都被置位了，
+所以你可以这样测试你是否需要对这个字符做特殊处理（UTF8_IS_INVARINT()是一个测试这个字节是否可以被编码为单字节，即使是在UTF-8中）：
+
     U8 *utf;
     U8 *utf_end; /* 1 beyond buffer pointed to by utf */
     UV uv;	/* Note: a UV, not a U8, not a char */
@@ -3731,6 +3734,9 @@ You can also see in that example that we use C<utf8_to_uvchr_buf> to get the
 value of the character; the inverse function C<uvchr_to_utf8> is available
 for putting a UV into UTF-8:
 
+你同样可以看到在这个例子中我们使用C<utf8_to_uvchr_buf>获得字符的值；
+反向的函数C<uvchr_to_utf8>被用于将一个UV转为UTF-8：
+
     if (!UTF8_IS_INVARIANT(uv))
         /* Must treat this as UTF8 */
         utf8 = uvchr_to_utf8(utf8, uv);
@@ -3746,6 +3752,14 @@ for instance, if your UTF-8 string contains C<v196.172>, and you skip
 that character, you can never match a C<chr(200)> in a non-UTF-8 string.
 So don't do that!
 
+当你需要匹配UTF-8与非UTF-8字符的时候必须要使用上列函数将字符转为UV。
+在该场景下你也许不需要跳过UTF-8字符。如果你这样做，你将会时区匹配非UTF-8字符串中高位字符的能力；
+例如：如果你的UTF-8字符串中包含C<v196.172>，你跳过这个字符，
+你永远都无法在一个非UTF-8字符串中匹配一个C<chr(200)>字符。
+因此不要那样做！
+
+=head2 Perl如何存储UTF-8字符串
+
 =head2 How does Perl store UTF-8 strings?
 
 Currently, Perl deals with Unicode strings and non-Unicode strings
@@ -3756,6 +3770,11 @@ as iso-8859-1, but C<use feature 'unicode_strings'> is needed to get iso-8859-1
 semantics). You can check and manipulate this flag with the
 following macros:
 
+当前Perl在处理Unicode字符串和非Unicode字符串时稍微有些不同。
+SV中的一个标记C<SVf_UTF8>用于标识字符串是内部编码为UTF-8的。
+没有它，字节值就是编码数字，反之亦然（另一方面，如果字符串被编码为iso-8859-1，你需要C<use feature 'unicode_strings'>以获得iso-8859-1的语义）。
+你可以使用以下宏检查和修改这个标志。
+
     SvUTF8(sv)
     SvUTF8_on(sv)
     SvUTF8_off(sv)
@@ -3765,13 +3784,21 @@ Unicode data is not properly distinguished, regular expressions,
 C<length>, C<substr> and other string handling operations will have
 undesirable results.
 
+这个标记对于Perl对待字符串的方式有很大的影响：如果Unicode数据没有被识别，
+正则表达式，C<length>, C<substr>和其他一些字符串处理操作都会有无法预料的结果。
+
 The problem comes when you have, for instance, a string that isn't
 flagged as UTF-8, and contains a byte sequence that could be UTF-8 -
 especially when combining non-UTF-8 and UTF-8 strings.
 
+问题源于当你有一个没有标识为UTF-8的字符串，它包含了UTF-8或部分UTF-8的字节的时候。
+
 Never forget that the C<SVf_UTF8> flag is separate to the PV value; you
 need be sure you don't accidentally knock it off while you're
 manipulating SVs. More specifically, you cannot expect to do this:
+
+永远不要忘记C<SVf_UTF8>标记和PV值是分开的；当处理SV的时候你要保证不会不小心将它漏掉。
+尤其是，你不应该这样做：
 
     SV *sv;
     SV *nsv;
@@ -3786,6 +3813,9 @@ The C<char*> string does not tell you the whole story, and you can't
 copy or reconstruct an SV just by copying the string value. Check if the
 old SV has the UTF8 flag set, and act accordingly:
 
+C<char*>字符串不会告诉你所有的东西，你不可以仅仅只通过拷贝其中的字符串来重新构造SV。
+检查之前的SV是否将UTF8标志置位，据此进行操作：
+
     p = SvPV(sv, len);
     frobnicate(p);
     nsv = newSVpvn(p, len);
@@ -3796,9 +3826,15 @@ In fact, your C<frobnicate> function should be made aware of whether or
 not it's dealing with UTF-8 data, so that it can handle the string
 appropriately.
 
+事实上，你的C<frobnicate>函数应该需要知道它是否在处理UTF-8编码的数据，这样它才能正确处理字符串。
+
 Since just passing an SV to an XS function and copying the data of
 the SV is not enough to copy the UTF8 flags, even less right is just
 passing a C<char *> to an XS function.
+
+由于向一个XS函数传递SV并拷贝SV的数据并不足以拷贝UTF8标记，如果仅仅传一个C<char *>就更加不正确了。
+
+=head2 怎样将一个字符串转码为UTF-8？
 
 =head2 How do I convert a string to UTF-8?
 
@@ -3806,9 +3842,14 @@ If you're mixing UTF-8 and non-UTF-8 strings, it is necessary to upgrade
 one of the strings to UTF-8. If you've got an SV, the easiest way to do
 this is:
 
+如果你混合了UTF-8和非UTF-8的字符串，你需要将其中的字符串转码为UTF-8。
+如果你拿到的是SV，最简单的方式是：
+
     sv_utf8_upgrade(sv);
 
 However, you must not do this, for example:
+
+然而，你并不是一定要这样做，例如：
 
     if (!SvUTF8(left))
         sv_utf8_upgrade(left);
@@ -3817,6 +3858,9 @@ If you do this in a binary operator, you will actually change one of the
 strings that came into the operator, and, while it shouldn't be noticeable
 by the end user, it can cause problems in deficient code.
 
+如果你在一个二元操作符中这样做，你将会改变其中一个传入参数，
+然而，这不应该让最终用户察觉到，可能会在一些有缺陷的代码中导致问题。
+
 Instead, C<bytes_to_utf8> will give you a UTF-8-encoded B<copy> of its
 string argument. This is useful for having the data available for
 comparisons and so on, without harming the original SV. There's also
@@ -3824,9 +3868,17 @@ C<utf8_to_bytes> to go the other way, but naturally, this will fail if
 the string contains any characters above 255 that can't be represented
 in a single byte.
 
+取代的做法是，C<bytes_to_utf8>将会给你一个UTF-8编码的字符串参数拷贝。
+对于数据比较来说非常有用，而且不会修改原有的SV。同样有一个C<utf8_to_bytes>功能恰好相反。
+但是如果你的字符串中包含大于255的字符，将会调用失败，因为无法被表示为单个字节。
+
+=head2 我还需要知道其他东西么？
+
 =head2 Is there anything else I need to know?
 
 Not really. Just remember these things:
+
+没有什么了。只要记住这些就可以：
 
 =over 3
 
@@ -3837,10 +3889,16 @@ is UTF-8 by looking at its C<SvUTF8> flag. Don't forget to set the flag if
 something should be UTF-8. Treat the flag as part of the PV, even though
 it's not - if you pass on the PV to somewhere, pass on the flag too.
 
+没有办法知道一个字符串是否为UTF-8编码。你可以通过查看一个SV的C<SvUTF8>标记来看它是否为UTF-8编码。
+不要忘记为那些应该是UTF-8的东西设置标记。将标记看作PV的一部分，即使它其实不是--如果你将PV传递给什么的话，记得传递这个标志。
+
 =item *
 
 If a string is UTF-8, B<always> use C<utf8_to_uvchr_buf> to get at the value,
 unless C<UTF8_IS_INVARIANT(*s)> in which case you can use C<*s>.
+
+如果字符串为UTF-8，总是使用C<utf8_to_uvchr_buf>以获取值，
+除非C<UTF8_IS_INVARIANT(*s)>，这种情况下使用C<*s>。
 
 =item *
 
@@ -3848,12 +3906,19 @@ When writing a character C<uv> to a UTF-8 string, B<always> use
 C<uvchr_to_utf8>, unless C<UTF8_IS_INVARIANT(uv))> in which case
 you can use C<*s = uv>.
 
+当向一个UTF-8字符串写入V<uv>的时候，通常要使用C<uvchr_to_utf8>，
+除非C<UTF8_IS_INVARIANT(uv))>，在这种情况下你可以使用C<*s = uv>。
+
 =item *
 
 Mixing UTF-8 and non-UTF-8 strings is tricky. Use C<bytes_to_utf8> to get
 a new string which is UTF-8 encoded, and then combine them.
 
+混合使用UTF-8和非UTF-8字符串是令人困惑的。使用C<bytes_to_utf8>获取一个新的UTF-8编码的字符串，然后合并它们。
+
 =back
+
+=head1 定制操作符
 
 =head1 Custom Operators
 
@@ -3864,11 +3929,18 @@ optimizations through the creation of "macro-ops" (ops which perform the
 functions of multiple ops which are usually executed together, such as
 C<gvsv, gvsv, add>.)
 
+定制操作符是一个实验性的特性可以使得你能够定义你自己的操作符。
+这原本是为了允许在Perl和性中构建其他语言的解释器而设立的，
+但是它也允许通过创建"macro-ops"（可以同时执行多条ops功能的ops，比如C<gvsv, gvsv, add>。）进行优化。
+
 This feature is implemented as a new op type, C<OP_CUSTOM>. The Perl
 core does not "know" anything special about this op type, and so it will
 not be involved in any optimizations. This also means that you can
 define your custom ops to be any op structure - unary, binary, list and
 so on - you like.
+
+这个特性通过一个新的op类型实现，C<OP_CUSTOM>。Perl内核不知道关于这个op类型的任何信息，
+因此也不会参与任何优化。这同样意味着你可以定义你自己的通用op为任何op结构 - 一元，二元，列表 等等。
 
 It's important to know what custom operators won't do for you. They
 won't let you add new syntax to Perl, directly. They won't even let you
@@ -3878,12 +3950,18 @@ Perl has compiled the program. You do this either by manipulating the op
 tree using a C<CHECK> block and the C<B::Generate> module, or by adding
 a custom peephole optimizer with the C<optimize> module.
 
+知道定制操作符不会为你做什么非常重要。它们不会让你直接为Perl添加新的语法。事实上，
+它们不会改变Perl编译一个程序的过程。在Perl编译完程序后你必须要自己做这些。
+你可以通过使用C<CHECK>块和C<B::Generate>模块管理op树的方式或使用C<optimize>模块添加一个定制窥孔优化器的方式来做实现这些改变。
+
 When you do this, you replace ordinary Perl ops with custom ops by
 creating ops with the type C<OP_CUSTOM> and the C<op_ppaddr> of your own
 PP function. This should be defined in XS code, and should look like
 the PP ops in C<pp_*.c>. You are responsible for ensuring that your op
 takes the appropriate number of values from the stack, and you are
 responsible for adding stack marks if necessary.
+
+当你做这件事的时候，你将普通的Perl ops替换为定制的ops
 
 You should also "register" your op with the Perl interpreter so that it
 can produce sensible error and warning messages. Since it is possible to
