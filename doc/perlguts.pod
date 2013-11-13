@@ -3961,7 +3961,8 @@ the PP ops in C<pp_*.c>. You are responsible for ensuring that your op
 takes the appropriate number of values from the stack, and you are
 responsible for adding stack marks if necessary.
 
-当你做这件事的时候，你将普通的Perl ops替换为定制的ops
+当你做这件事的时候，你通过创建C<OP_CUSTOM>类型的ops和你自己的PP函数的C<op_ppaddr>将普通的Perl ops替换为定制的ops。
+着应该被定义在XS代码中，应该看上去向C<pp_*.c>中的PP ops。你要保证你的op会从栈上获取合适数量的值，你需要在必要的时候添加栈标记。
 
 You should also "register" your op with the Perl interpreter so that it
 can produce sensible error and warning messages. Since it is possible to
@@ -3971,6 +3972,11 @@ it is dealing with. You should create an C<XOP> structure for each
 ppaddr you use, set the properties of the custom op with
 C<XopENTRY_set>, and register the structure against the ppaddr using
 C<Perl_custom_op_register>. A trivial example might look like:
+
+你应该向Perl解释器"注册"你的op，这样它才能产生有意以的错误和警告信息。
+因为"逻辑上的"op类型C<OP_CUSTOM>可能有多个定制op，Perl使用C<< o->op_ppaddr >>来区分使用哪一个定制op来处理它。
+你应该为每一个ppaddr创建C<XOP>结构，用C<XopENTRY_set>为定制op设置属性，使用C<Perl_custom_op_register>注册ppaddr对应的结构。
+一个简单的例子：
 
     static XOP my_xop;
     static OP *my_pp(pTHX);
@@ -3982,6 +3988,8 @@ C<Perl_custom_op_register>. A trivial example might look like:
 
 The available fields in the structure are:
 
+结构体可用的字段有：
+
 =over 4
 
 =item xop_name
@@ -3990,14 +3998,21 @@ A short name for your op. This will be included in some error messages,
 and will also be returned as C<< $op->name >> by the L<B|B> module, so
 it will appear in the output of module like L<B::Concise|B::Concise>.
 
+你的op的名称。这将会被包含中错误信息中，可以被L<B|B>模块作为C<< $op->name >>返回，
+因此它会出现在诸如L<B::Concise|B::Concise>这样的模块的输出中。
+
 =item xop_desc
 
 A short description of the function of the op.
+
+op的函数的简短描述。
 
 =item xop_class
 
 Which of the various C<*OP> structures this op uses. This should be one of
 the C<OA_*> constants from F<op.h>, namely
+
+op使用的C<*OP>结构类型。这个应该是F<op.h>中定义的C<OA_*>常量，如：
 
 =over 4
 
@@ -4022,6 +4037,8 @@ the C<OA_*> constants from F<op.h>, namely
 This should be interpreted as 'C<PVOP>' only. The C<_OR_SVOP> is because
 the only core C<PVOP>, C<OP_TRANS>, can sometimes be a C<SVOP> instead.
 
+它应该被解释为'C<PVOP>'。C<_OR_SVOP>是因为C<PVOP>, C<OP_TRANS>,有时会被C<SVOP>取代。
+
 =item OA_LOOP
 
 =item OA_COP
@@ -4029,6 +4046,8 @@ the only core C<PVOP>, C<OP_TRANS>, can sometimes be a C<SVOP> instead.
 =back
 
 The other C<OA_*> constants should not be used.
+
+其他的C<OA_*>常量不应该使用。
 
 =item xop_peep
 
@@ -4038,9 +4057,17 @@ will be called from C<Perl_rpeep> when ops of this type are encountered
 by the peephole optimizer. I<o> is the OP that needs optimizing;
 I<oldop> is the previous OP optimized, whose C<op_next> points to I<o>.
 
+这个成员是C<Perl_cpeep_t>类型的，它将会拓展为C<void(*Perl_cpeep_t)(aTHX_ OP *o, OP *oldop)>。
+如果它被设置了，这个函数将会在窥孔优化器遇到这种类型的ops时从C<Perl_rpeep>调用。
+I<o>是需要优化的OP；I<oldop>是之前被优化的OP，其C<op_next>字段指向I<o>。
+
 =back
 
 C<B::Generate> directly supports the creation of custom ops by name.
+
+C<B::Generate>直接支持通过名称创建定制op。
+
+=head1 作者
 
 =head1 AUTHORS
 
@@ -4048,10 +4075,20 @@ Until May 1997, this document was maintained by Jeff Okamoto
 E<lt>okamoto@corp.hp.comE<gt>.  It is now maintained as part of Perl
 itself by the Perl 5 Porters E<lt>perl5-porters@perl.orgE<gt>.
 
+自1997年5月，本文档由Jeff Okamoto E<lt>okamoto@corp.hp.comE<gt>维护。
+它现在是作为Perl的一部分由Perl 5 Porters E<lt>perl5-porters@perl.orgE<gt>维护。
+
 With lots of help and suggestions from Dean Roehrich, Malcolm Beattie,
 Andreas Koenig, Paul Hudson, Ilya Zakharevich, Paul Marquess, Neil
 Bowers, Matthew Green, Tim Bunce, Spider Boardman, Ulrich Pfeifer,
 Stephen McCamant, and Gurusamy Sarathy.
+
+大量的帮助和建议来自于 Dean Roehrich, Malcolm Beattie,
+Andreas Koenig, Paul Hudson, Ilya Zakharevich, Paul Marquess, Neil
+Bowers, Matthew Green, Tim Bunce, Spider Boardman, Ulrich Pfeifer,
+Stephen McCamant, and Gurusamy Sarathy.
+
+=head1 请参考
 
 =head1 SEE ALSO
 
