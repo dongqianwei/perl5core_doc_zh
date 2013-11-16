@@ -711,9 +711,13 @@ RETVAL变量仍然被声明，但是它不会被返回，除非在OUTPUT: 节中
 The following XSUB is for a C function which requires special handling of
 its parameters.  The Perl usage is given first.
 
+一下XSUB对应的C函数需要对其参数做特殊处理。Perl的用法先给出：
+
      $status = rpcb_gettime( "localhost", $timep );
 
 The XSUB follows.
+
+XSUB如下：
 
      bool_t
      rpcb_gettime(host,timep)
@@ -727,9 +731,14 @@ The XSUB follows.
 
 =head2 The INIT: Keyword
 
+=head2 INIT: 关键字
+
 The INIT: keyword allows initialization to be inserted into the XSUB before
 the compiler generates the call to the C function.  Unlike the CODE: keyword
 above, this keyword does not affect the way the compiler handles RETVAL.
+
+INIT: 关键字允许在编译前生成调用C函数的代码之前将初始化插入到XSUB中。
+与CODE: 关键字不同的是，这个关键字并不影响编译器处理RETVAL的方式。
 
     bool_t
     rpcb_gettime(host,timep)
@@ -743,6 +752,8 @@ above, this keyword does not affect the way the compiler handles RETVAL.
 Another use for the INIT: section is to check for preconditions before
 making a call to the C function:
 
+另一个INIT的用途是：在调用C函数之前检查预置条件：
+
     long long
     lldiv(a,b)
 	long long a
@@ -755,6 +766,8 @@ making a call to the C function:
 
 =head2 The NO_INIT Keyword
 
+=head2 NO_INIT 关键字
+
 The NO_INIT keyword is used to indicate that a function
 parameter is being used only as an output value.  The B<xsubpp>
 compiler will normally generate code to read the values of
@@ -764,9 +777,17 @@ will tell the compiler that some parameters will be used for
 output rather than for input and that they will be handled
 before the function terminates.
 
+NO_INIT关键字被用于表示一个函数参数只被用于输出值。
+B<xsubpp>编译器通常会生成代码从参数栈中读取所有的函数参数，
+并将它们赋予函数入口处的C变量。NO_INIT将会告诉编译器一些参数是被用于输出值的，
+而不是输入，它们将在函数终止前被处理。
+
 The following example shows a variation of the rpcb_gettime() function.
 This function uses the timep variable only as an output variable and does
 not care about its initial contents.
+
+一下例子展示了一个rpcb_gettime()函数的变体。这个函数使用timp变量仅作为输出变量而
+不会在意它的初始内容。
 
      bool_t
      rpcb_gettime(host,timep)
@@ -777,6 +798,8 @@ not care about its initial contents.
 
 =head2 The TYPEMAP: Keyword
 
+=head2 TYPEMAP: 关键字
+
 Starting with Perl 5.16, you can embed typemaps into your XS code
 instead of or in addition to typemaps in a separate file.  Multiple
 such embedded typemaps will be processed in order of appearance in
@@ -785,6 +808,11 @@ default typemap, the embedded typemaps may overwrite previous
 definitions of TYPEMAP, INPUT, and OUTPUT stanzas.  The syntax for
 embedded typemaps is
 
+从Perl 5.16开始，你可以向你的XS嵌入typemaps而不必向另外的文件添加typemaps了。
+多个这样嵌入的typemaps将被顺序处理，就像本地的typemap文件一样覆盖默认的typemap，
+嵌入的typemap也许会覆盖之前的TYPEMAP，INPUT和OUTPUT节 定义。
+嵌入typemaps的语法为：
+
       TYPEMAP: <<HERE
       ... your typemap code here ...
       HERE
@@ -792,9 +820,15 @@ embedded typemaps is
 where the C<TYPEMAP> keyword must appear in the first column of a
 new line.
 
+C<TYPEMAP>关键字必须要在新的一行的第一列出现。
+
 Refer to L<perlxstypemap> for details on writing typemaps.
 
+参见L<perlxstypemap>以获取更多如何书写typemaps的信息。
+
 =head2 Initializing Function Parameters
+
+=head2 初始化函数参数
 
 C function parameters are normally initialized with their values from
 the argument stack (which in turn contains the parameters that were
@@ -807,12 +841,22 @@ C<=>, C<;> or C<+> on a line in the INPUT: section.  The only
 exception happens if this C<;> terminates the line, then this C<;>
 is quietly ignored.
 
+C函数参数通常是通过参数栈上的值来初始化它们的值的（也就是说包含了我们从Perl传入XSUB的参数）。
+typemaps包含了用于将Perl值转为C参数的代码块。
+程序员可以覆盖这些typemaps并提供另外的（或添加）初始化代码
+初始化代码以INPUT: 节中一行中的第一个C<=>，C<;>或C<+>开始。
+唯一的例外是：如果这个C<;>终止了这一行，那么这个C<;>会被忽略。
+
 The following code demonstrates how to supply initialization code for
 function parameters.  The initialization code is eval'ed within double
 quotes by the compiler before it is added to the output so anything
 which should be interpreted literally [mainly C<$>, C<@>, or C<\\>]
 must be protected with backslashes.  The variables C<$var>, C<$arg>,
 and C<$type> can be used as in typemaps.
+
+以下代码展示了如何为函数参数提供初始化代码。初始化代码在被添加到输出之前会被编译器包裹在双引号中
+进行eval，因此任何应该按文本含义解释的部分【主要是C<$>，C<@>或C<\\>】都必须用反斜杠保护起来。
+变量C<$var>，C<$arg>和C<$type>如在typemaps中一样可以使用。
 
      bool_t
      rpcb_gettime(host,timep)
@@ -826,6 +870,9 @@ would normally use this when a function parameter must be processed by
 another library function before it can be used.  Default parameters are
 covered in the next section.
 
+这不应该用于向参数提供默认值。一般在当一个函数参数使用前必须要被另一个库函数处理的时候才使用它。
+默认参数会在下一节说明。
+
 If the initialization begins with C<=>, then it is output in
 the declaration for the input variable, replacing the initialization
 supplied by the typemap.  If the initialization
@@ -838,7 +885,15 @@ variable, C<%v>, is available for the truly rare case where
 information from one initialization is needed in another
 initialization.
 
+如果初始化代码以C<=>开头，那么它将输出得到输入变量的声明之中，代替typemap提供的初始化代码。
+如果初始化以C<;>或C<+>开头，那么它将在所有输入变量声明之后执行。
+在C<;>的情况下由typemap提供的代码将不会执行。
+在C<+>的情况下变量的声明将会包含typemap提供的初始化代码。
+全局变量C<%v>在少数需要在不同初始化过程中共享数据的场景中可以使用。
+
 Here's a truly obscure example:
+
+这是一个粗略的例子：
 
      bool_t
      rpcb_gettime(host,timep)
