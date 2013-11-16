@@ -25,7 +25,7 @@ written in the XS language and is the core component of the Perl
 extension interface.
 
 XS 是一种接口描述文件格式，用于创建用于Perl中的Perl与C代码（或C库）的接口。
-XS接口与原有的库被联合起来创建一个新库以被perl动态加载或被静态链接到perl中。
+XS接口与原有的库被联合在一起以创建一个新的库被perl动态加载，或被静态链接到perl中。
 XS接口描述是用XS语言写的，是Perl拓展接口的核心组成部分。
 
 An B<XSUB> forms the basic unit of the XS interface.  After compilation
@@ -34,7 +34,7 @@ which will provide the glue between Perl calling conventions and C
 calling conventions.
 
 一个B<XSUB>形成了最基本的XS接口单元。在通过B<xsubpp>编译器编译后，
-每一个XSUB对应一个C函数定义，它提供了粘合Perl调用约定域C调用约定的胶水。
+每一个XSUB对应一个C函数定义，它提供了粘合Perl调用约定与C调用约定的胶水代码。
 
 The glue code pulls the arguments from the Perl stack, converts these
 Perl values to the formats expected by a C function, call this C function,
@@ -44,10 +44,10 @@ function arguments that may serve as output parameters.  These return
 values may be passed back to Perl either by putting them on the
 Perl stack, or by modifying the arguments supplied from the Perl side.
 
-这些胶水代码将参数从Perl栈上拉出来，将这些Perl的值装为C函数期待的形式，
-调用C函数，将C函数返回的结果返回给Perl。
-这里的返回值也许是一个常规的C返回值或者任何作为出参的C函数参数。
-这些返回值可能通过放置到Perl栈的方式或者修改Perl提供的参数的方式被传回。
+这些胶水代码将参数从Perl栈上取出来，将这些Perl的值转为C函数期望的形式，
+调用C函数，将C函数结果返回给Perl。
+这里的返回值可以是一个常规的C返回值，或者任何作为出参的参数。
+这些返回值可能通过放到Perl栈上的方式，或者修改Perl提供的参数的方式被传回。
 
 The above is a somewhat simplified view of what really happens.  Since
 Perl allows more flexible calling conventions than C, XSUBs may do much
@@ -57,8 +57,8 @@ from the C function indicates failure, calling different C functions
 based on numbers and types of the arguments, providing an object-oriented
 interface, etc.
 
-以上内容就是事实发生的事情的简化描述。由于Perl允许比C更加灵活的调用约定，
-XSUBs也许会比实际上做更多的工作，比如检查输入参数的合法性，
+以上内容是实际发生的事的简单描述。由于Perl允许比C更加灵活的调用约定，
+XSUBs可能会在实践中做更多的工作，比如检查输入参数的合法性，
 在C函数返回失败的情况下抛异常（或返回undef/empty列表），
 根据参数的数量和类型调用不同的C函数，提供面向对象的结构，等等。
 
@@ -70,9 +70,9 @@ instead of writing this glue C code in long-hand, one can write
 a more concise short-hand I<description> of what should be done by
 the glue, and let the XS compiler B<xsubpp> handle the rest.
 
-当然，也可以直接用C写胶水代码。但是，这将会事非常麻烦的任务，
-尤其是当你需要为多个C函数写胶水代码，或者你对Perl栈的特点诸如此类的的东西不熟悉的话。
-XS将为你解决这些问题：你可以写一段更加精确简洁的关于胶水代码应该做什么的I<描述>，
+当然，也可以直接用C写胶水代码。但是，这将是非常麻烦的任务，
+尤其是当你需要为多个C函数写胶水代码，或者你对Perl栈的特点等诸如此类的的知识不熟悉的话。
+XS将为你解决这些问题：你可以写一段更加精确简洁的，关于胶水代码应该做什么的I<描述>，
 并让XS 编译器 B<xsubpp>来完成剩下的工作。
 
 The XS language allows one to describe the mapping between how the C
@@ -86,11 +86,11 @@ that is able to translate an entire C header file into a corresponding
 XS file that will provide glue to the functions/macros described in
 the header file.
 
-XS语言允许你描述C代码是如何使用的以及对应的Perl代码是如何使用的之间的映射关系。
-它同样允许创建会被直接被翻译为C代码Perl例程，即使它和已存在的C函数没有关系。
+XS语言允许你描述C代码是如何使用的，以及对应的Perl代码是如何使用的 之间的映射关系。
+它同样允许创建会被直接被翻译为C代码的Perl例程，即使它和已存在的C函数没有关系。
 在C接口和Perl接口相似的场景下，XSUB声明和C函数的声明（K&R形式）基本一致。
 在这样的场景下，有另一个工具C<h2xs>可以将整个C头文件翻译为对应的XS文件，
-其将提供头文件中描述的函数/宏的胶水代码。
+其将提供对应头文件中的描述的函数/宏的胶水代码。
 
 The XS compiler is called B<xsubpp>.  This compiler creates
 the constructs necessary to let an XSUB manipulate Perl values, and
@@ -429,6 +429,12 @@ easier, the typemap file automatically makes C<RETVAL> mortal when
 you're returning an C<SV *>. Thus, the following two XSUBs are more
 or less equivalent:
 
+当你使用RETVAL来返回一个C<SV *>时，其背后将会发生一下奇妙的事。
+当你使用ST<x>宏管理参数栈的时候，比如，你通常需要注意引用计数。
+（参见L<perlguts>以获取更多关于引用计数的信息。）为了让你的生活更加简单，
+当你返回一个C<SV *>的时候，typemap文件自动将C<RETVAL>设为"将死的"。
+因此，一下两个XSUB某种程度上是完全相同的：
+
   void
   alpha()
       PPCODE:
@@ -448,6 +454,9 @@ this works fine for an C<SV *>, it's unfortunately not as easy
 to have C<AV *> or C<HV *> as a return value. You I<should> be
 able to write:
 
+从增加可阅读性的角度来说这样非常有效。尽管对于C<SV *>来说这样能工作地很好，
+但不幸的是对于C<AV *>和C<HV *>作为返回值而言没那么容易，你应该能够这样写：
+
   AV *
   array()
       CODE:
@@ -466,12 +475,20 @@ In XS code on perls starting with perl 5.16, you can override the
 typemaps for any of these types with a version that has proper
 handling of refcounts. In your C<TYPEMAP> section, do
 
+但是由于typemap文件中一些没有修复的bug（修复它们将导致大量已存在的CPAN模块失效），
+C<AV *>的引用计数没有被减少。因此，以上XSUB会在调用时导致内存泄漏。
+对C<HV *>，C<CV *>和C<SVREG>（表示一个scalar引用，不是一般的C<SV *>。）来说有同样的问题。
+在从5.16版本开始的Perl XS代码中，你可以用能正确处理引用计数的版本覆盖typemaps中的任何类型。
+在你的C<TYPEMAP>节中：
+
   AV*	T_AVREF_REFCOUNT_FIXED
 
 to get the repaired variant. For backward compatibility with older
 versions of perl, you can instead decrement the reference count
 manually when you're returning one of the aforementioned
 types using C<sv_2mortal>:
+
+以获取修复后的变体。为了向后兼容老版本的perl，在返回之前提到的要使用C<sv_2mortal>的类型时你应该手动减少引用计数。
 
   AV *
   array()
@@ -485,7 +502,11 @@ types using C<sv_2mortal>:
 Remember that you don't have to do this for an C<SV *>. The reference
 documentation for all core typemaps can be found in L<perlxstypemap>.
 
+记住你不需要为C<SV *>做这个。所有核心typemaps的参考文档都可以在L<perlxstypemap>中看到。
+
 =head2 The MODULE Keyword
+
+=head2 模块关键字
 
 The MODULE keyword is used to start the XS code and to specify the package
 of the functions which are being defined.  All text preceding the first
@@ -496,16 +517,27 @@ name of this bootstrap function will match the value of the last MODULE
 statement in the XS source files.  The value of MODULE should always remain
 constant within the same XS file, though this is not required.
 
+模块关键字被用于标识XS代码的开始以及说明定义的函数所属的模块。
+所有在MODULE关键字之前的文本都本认为是C代码并在去除POD后输出。每一个XS模块都会有一个启动函数用于将XSUBs钩到Perl中。
+启动函数的包名应该匹配XS源文件中最后一条MODULE语句，尽管着不是必须的。
+
 The following example will start the XS code and will place
 all functions in a package named RPC.
+
+以下例子标识XS代码的开始并且会将所有函数放置到RPC包中。
 
      MODULE = RPC
 
 =head2 The PACKAGE Keyword
 
+=head2 PACKAGE 关键字
+
 When functions within an XS source file must be separated into packages
 the PACKAGE keyword should be used.  This keyword is used with the MODULE
 keyword and must follow immediately after it when used.
+
+当XS源文件中的函数必须要被分到不同包中时，应该使用PACKAGE关键字。
+这个关键字和MODULE关键字一起使用，而且必须要立即跟在它后面。
 
      MODULE = RPC  PACKAGE = RPC
 
@@ -523,26 +555,39 @@ The same package name can be used more than once, allowing for
 non-contiguous code. This is useful if you have a stronger ordering
 principle than package names.
 
+同一个包名可以被多次使用，以允许非连续代码。当你的排序原则和包名的顺序不一致的时候非常有用。
+
 Although this keyword is optional and in some cases provides redundant
 information it should always be used.  This keyword will ensure that the
 XSUBs appear in the desired package.
 
+尽管这个关键字是可选的而且在一些场景中提供的是多余的信息，它还是应该被使用。
+它会保证XSUB会出现在期望的包中。
+
 =head2 The PREFIX Keyword
+
+=head2 PREFIX 关键字
 
 The PREFIX keyword designates prefixes which should be
 removed from the Perl function names.  If the C function is
 C<rpcb_gettime()> and the PREFIX value is C<rpcb_> then Perl will
 see this function as C<gettime()>.
 
+PREFIX关键字
+
 This keyword should follow the PACKAGE keyword when used.
 If PACKAGE is not used then PREFIX should follow the MODULE
 keyword.
+
+这个关键字应该跟在PACKAGE关键字后面使用。如果PACKAGE没有使用那么PREFIX应该跟在MODULE关键字后面。
 
      MODULE = RPC  PREFIX = rpc_
 
      MODULE = RPC  PACKAGE = RPCB  PREFIX = rpcb_
 
 =head2 The OUTPUT: Keyword
+
+=head2 OUTPUT: 关键字
 
 The OUTPUT: keyword indicates that certain function parameters should be
 updated (new values made visible to Perl) when the XSUB terminates or that
@@ -553,16 +598,26 @@ automatically designated as an output value.  For more complex functions
 the B<xsubpp> compiler will need help to determine which variables are output
 variables.
 
+OUTPUT: 关键字表示某个函数的参数应该被更新（使得一些值对Perl可见）当其XSUB终止或某些值应该被返回到Perl函数的时候。
+对于没有CODE: 段或PPCODE: 段的简单的函数，比如上面说的sin()函数，RETVAL变量自动被制定为返回值。
+对于更复杂的函数B<xsubpp>编译器将需要额外的帮助以确定哪些变量是输出变量。
+
 This keyword will normally be used to complement the CODE:  keyword.
 The RETVAL variable is not recognized as an output variable when the
 CODE: keyword is present.  The OUTPUT:  keyword is used in this
 situation to tell the compiler that RETVAL really is an output
 variable.
 
+这个关键字通常会被用于作为CODE: 关键字的补充。当使用CODE: 关键字的时候RETVAL变量不会作为输出变量。
+OUTPUT: 关键字被使用于这种场景以告诉编译器RETVAL是输出变量。
+
 The OUTPUT: keyword can also be used to indicate that function parameters
 are output variables.  This may be necessary when a parameter has been
 modified within the function and the programmer would like the update to
 be seen by Perl.
+
+OUTPUT: 关键字可以被用于表示作为输出变量的函数参数。
+当参数被在函数中被变更而且程序员希望Perl可以知道这次变更的时候需要这样做。
 
      bool_t
      rpcb_gettime(host,timep)
@@ -574,6 +629,8 @@ be seen by Perl.
 The OUTPUT: keyword will also allow an output parameter to
 be mapped to a matching piece of code rather than to a
 typemap.
+
+OUTPUT: 关键字同样允许输出参数映射到匹配的代码快而不是typemap。
 
      bool_t
      rpcb_gettime(host,timep)
@@ -593,21 +650,40 @@ Likewise,  C<SETMAGIC: ENABLE> can be used to reenable it for the
 remainder of the OUTPUT section.  See L<perlguts> for more details
 about 'set' magic.
 
+B<xsubpp> 会为XSUB的OUTPUT节中所有参数（除了RETVAL）出发一次自动的C<SvSETMAGIC()>。
+这通常是期望的行为，它会对传出参数恰当地出发'set'魔法（哈稀表和数组成员参数需要这样，当它们不存在的时候必须要创建）。
+如果因为某种原因不需要这种行为，OUTPUT节应该包含一行C<SETMAGIC: DISABLE>以对剩余的参数关闭这个特性。
+相反，C<SETMAGIC: ENABLE>用于为剩余的参数打开该特性。参见L<perlguts>以获得更多信息。
+
+B<xsubpp>
+
 =head2 The NO_OUTPUT Keyword
+
+=head2 NO_OUTPUT 关键字
 
 The NO_OUTPUT can be placed as the first token of the XSUB.  This keyword
 indicates that while the C subroutine we provide an interface to has
 a non-C<void> return type, the return value of this C subroutine should not
 be returned from the generated Perl subroutine.
 
+NO_OUTPUT可以作为XSUB的第一个词。这个关键字标识尽管我们为之提供接口的C子例程有一个非空的返回类型，
+这个C子例程的返回值不应该从生成的Perl子例程返回。
+
 With this keyword present L<The RETVAL Variable> is created, and in the
 generated call to the subroutine this variable is assigned to, but the value
 of this variable is not going to be used in the auto-generated code.
+
+有这个关键字以后L<RETVAL变量>还是会被创建，而且在这个子例程生成的代码中这个变量还被赋值了，
+但是这个值不会被自动生成的代码使用。
 
 This keyword makes sense only if C<RETVAL> is going to be accessed by the
 user-supplied code.  It is especially useful to make a function interface
 more Perl-like, especially when the C return value is just an error condition
 indicator.  For example,
+
+这个关键字只有在C<RETVAL>将被用户提供的代码使用的时候才有意义。
+尤其是为了将一个函数接口变得更有Perl风格，或者当C返回值只是一个错误条件的标记。
+例如：
 
   NO_OUTPUT int
   delete_file(char *name)
@@ -618,12 +694,19 @@ indicator.  For example,
 Here the generated XS function returns nothing on success, and will die()
 with a meaningful error message on error.
 
+这里生成的XS函数在成功时什么都不会返回，在失败时会die()并对error流输出有意以的错误信息。
+
 =head2 The CODE: Keyword
+
+=head2 CODE: 关键字
 
 This keyword is used in more complicated XSUBs which require
 special handling for the C function.  The RETVAL variable is
 still declared, but it will not be returned unless it is specified
 in the OUTPUT: section.
+
+这个关键字被用于需要对C函数做特殊处理的更加复杂的XSUB。
+RETVAL变量仍然被声明，但是它不会被返回，除非在OUTPUT: 节中被明确指明。
 
 The following XSUB is for a C function which requires special handling of
 its parameters.  The Perl usage is given first.
