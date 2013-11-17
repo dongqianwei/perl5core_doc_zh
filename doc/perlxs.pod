@@ -910,18 +910,33 @@ the text of the evaluated snippet is output into the generated C file
 C<$arg> will evaluate to C<ST(0)>, and C<$v{timep}> will evaluate to
 C<ST(1)>.
 
+上面提到的C<\$v{timep}=@{[$v{timep}=$arg]}>结构有两层含义：首先，
+当这一行被B<xsubpp>处理时，Perl代码片段C<$v{timep}=$arg>被求值。
+其次，求值得出的结果被输出到生成的C文件中（在C注释中）！在处理C<char *host>行时，
+C<$arg>将被计算并保存到C<ST(0)>，C<$v{timep}>将被计算算并保存到C<ST{1}>。
+
 =head2 Default Parameter Values
+
+=head2 默认参数值
 
 Default values for XSUB arguments can be specified by placing an
 assignment statement in the parameter list.  The default value may
 be a number, a string or the special string C<NO_INIT>.  Defaults should
 always be used on the right-most parameters only.
 
+XSUB参数的默认值可以通过在参数列表中放置一条赋值语句实现。
+默认值也许是一个数字，一个字符串或一个特殊字符串C<NO_INIT>。
+默认值应当总是被用在括号的最右边。
+
 To allow the XSUB for rpcb_gettime() to have a default host
 value the parameters to the XSUB could be rearranged.  The
 XSUB will then call the real rpcb_gettime() function with
 the parameters in the correct order.  This XSUB can be called
 from Perl with either of the following statements:
+
+为了使得rpcb_gettime()的XSUB有一个默认值，XSUB的参数应该是可重置的。
+XSUB将会接着以正确的参数顺序调用真正的rpcb_gettime()函数。
+这个XSUB可以从Perl中按以下任意一种方式调用。
 
      $status = rpcb_gettime( $timep, $host );
 
@@ -930,6 +945,8 @@ from Perl with either of the following statements:
 The XSUB will look like the code  which  follows.   A  CODE:
 block  is used to call the real rpcb_gettime() function with
 the parameters in the correct order for that function.
+
+XSUB看起来向下面的代码。一个CODE: 块被用于按正确的参数顺序调用真实的recb_gettime()函数。
 
      bool_t
      rpcb_gettime(timep,host="localhost")
@@ -943,9 +960,13 @@ the parameters in the correct order for that function.
 
 =head2 The PREINIT: Keyword
 
+=head2 PREINIT: 关键字
+
 The PREINIT: keyword allows extra variables to be declared immediately
 before or after the declarations of the parameters from the INPUT: section
 are emitted.
+
+PREINIT: 关键字允许额外的变量在INPUT: 节的参数声明之前会之后立即声明。
 
 If a variable is declared inside a CODE: section it will follow any typemap
 code that is emitted for the input parameters.  This may result in the
@@ -954,13 +975,23 @@ errors may happen with an explicit C<;>-type or C<+>-type initialization of
 parameters is used (see L<"Initializing Function Parameters">).  Declaring
 these variables in an INIT: section will not help.
 
+如果一个变量在CODE: 节中声明，它将会跟在任何由输入参数生成的typemap代码之后。
+这也许会导致这个声明在C代码结束后才声明，造成一个C语法错误。
+当显式地使用<;>类型或<+>类型的参数初始化方式时（参见L<"初始化函数参数">）也会发生类似的错误。
+在INIT: 节声明这些变量也不会有什么帮助。
+
 In such cases, to force an additional variable to be declared together
 with declarations of other variables, place the declaration into a
 PREINIT: section.  The PREINIT: keyword may be used one or more times
 within an XSUB.
 
+在这样的场景中，为了强制一个额外的变量与其他变量一起被声明，需要将声明放置到PREINIT: 节。
+PREINIT: 关键字可能在一个XSUB中会被使用多次。
+
 The following examples are equivalent, but if the code is using complex
 typemaps then the first example is safer.
+
+以下代码是等效的，但是如果代码使用复杂的typemaps，则第一个例子更加安全。
 
      bool_t
      rpcb_gettime(timep)
@@ -976,6 +1007,9 @@ typemaps then the first example is safer.
 For this particular case an INIT: keyword would generate the
 same C code as the PREINIT: keyword.  Another correct, but error-prone example:
 
+这个特殊的例子中INIT: 关键字和PREINIT: 关键字会生成一样的C代码。
+另一个正确但易出错的例子是：
+
      bool_t
      rpcb_gettime(timep)
           time_t timep = NO_INIT
@@ -987,6 +1021,8 @@ same C code as the PREINIT: keyword.  Another correct, but error-prone example:
           RETVAL
 
 Another way to declare C<host> is to use a C block in the CODE: section:
+
+另一种声明C<host>的方法是在CODE: 节中使用一个C代码块：
 
      bool_t
      rpcb_gettime(timep)
@@ -1004,6 +1040,8 @@ The ability to put additional declarations before the typemap entries are
 processed is very handy in the cases when typemap conversions manipulate
 some global state:
 
+将额外的变量声明放在typemap条目之前的能力在typemap转换管理西写全局状态的时候非常有用：
+
     MyObject
     mutate(o)
 	PREINIT:
@@ -1018,9 +1056,15 @@ MyObject when processing RETVAL will modify a global variable C<global_state>.
 After these conversions are performed, we restore the old value of
 C<global_state> (to avoid memory leaks, for example).
 
+这里我们假设INPUT: 节中到C<MyObject>的转换,
+以及处理RETVAL时从MyObject的转换会改变全局变量C<global_state>。
+在这些转换完成后，我们将C<global_state>原来的值恢复（比如为了避免内存泄漏）。
+
 There is another way to trade clarity for compactness: INPUT sections allow
 declaration of C variables which do not appear in the parameter list of
 a subroutine.  Thus the above code for mutate() can be rewritten as
+
+
 
     MyObject
     mutate(o)
