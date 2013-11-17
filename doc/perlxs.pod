@@ -1064,7 +1064,8 @@ There is another way to trade clarity for compactness: INPUT sections allow
 declaration of C variables which do not appear in the parameter list of
 a subroutine.  Thus the above code for mutate() can be rewritten as
 
-
+还有另一种牺牲清晰性以获得严密性的例子：INPUT节允许声明没有出现在参数列表中的C变量。
+因此以上mutate()的代码可以被重写为：
 
     MyObject
     mutate(o)
@@ -1074,6 +1075,8 @@ a subroutine.  Thus the above code for mutate() can be rewritten as
 	  reset_to(global_state, st);
 
 and the code for rpcb_gettime() can be rewritten as
+
+而rpcb_gettime()的代码可以被重写为：
 
      bool_t
      rpcb_gettime(timep)
@@ -1087,22 +1090,35 @@ and the code for rpcb_gettime() can be rewritten as
 
 =head2 The SCOPE: Keyword
 
+=head2 SCOPE: 关键字
+
 The SCOPE: keyword allows scoping to be enabled for a particular XSUB. If
 enabled, the XSUB will invoke ENTER and LEAVE automatically.
+
+SCOPE: 关键字使得在某个XSUB中允许出现作用域。如果被允许，这个XSUB将会自动触发ENTER和LEAVE。
 
 To support potentially complex type mappings, if a typemap entry used
 by an XSUB contains a comment like C</*scope*/> then scoping will
 be automatically enabled for that XSUB.
 
+为了支持潜在的复杂类型映射，如果一个XSUB是中使用的typemap条目包含一个像C</*scoope*/>的注释，
+那么这个scoping将被对于这个XSUB自动允许。
+
 To enable scoping:
+
+为了打开scoping:
 
     SCOPE: ENABLE
 
 To disable scoping:
 
+为了关闭scoping:
+
     SCOPE: DISABLE
 
 =head2 The INPUT: Keyword
+
+=head2 INPUT： 关键字
 
 The XSUB's parameters are usually evaluated immediately after entering the
 XSUB.  The INPUT: keyword can be used to force those parameters to be
@@ -1110,8 +1126,14 @@ evaluated a little later.  The INPUT: keyword can be used multiple times
 within an XSUB and can be used to list one or more input variables.  This
 keyword is used with the PREINIT: keyword.
 
+XSUB的参数通常在进入XSUB后立即被计算出来。INPUT: 关键字可以被用于强制这些参数被延迟计算。
+INPUT: 关键字能被在XSUB中多处使用，而且能被用于列出多个输入参数。
+这个关键字被和PREINIT: 关键字一起使用。
+
 The following example shows how the input parameter C<timep> can be
 evaluated late, after a PREINIT.
+
+以下代码展示了输入参数C<timpe>是如何在延迟到PREINIT之后被计算的。
 
     bool_t
     rpcb_gettime(host,timep)
@@ -1128,6 +1150,8 @@ evaluated late, after a PREINIT.
           RETVAL
 
 The next example shows each input parameter evaluated late.
+
+下一个例子展示了每一个输入参数都被延迟计算。
 
     bool_t
     rpcb_gettime(host,timep)
@@ -1149,6 +1173,8 @@ The next example shows each input parameter evaluated late.
 
 Since INPUT sections allow declaration of C variables which do not appear
 in the parameter list of a subroutine, this may be shortened to:
+
+由于允许在INPUT节中声明没有出现在子例程参数列表中的C变量，这可以被简写为：
 
     bool_t
     rpcb_gettime(host,timep)
