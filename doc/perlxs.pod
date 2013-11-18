@@ -1194,12 +1194,20 @@ thus C<host> is initialized on the declaration line, and our assignment
 C<h = host> is not performed too early.  Otherwise one would need to have the
 assignment C<h = host> in a CODE: or INIT: section.)
 
+（我们已知C<char*>的输入转换是"简单"的类型，因此C<host>在声明的哪一行就初始化了，
+于是C<h = host>并没有执行得太早。否则需要将C<h = host>赋值语句放在CODE: 或INIT: 段。）
+
 =head2 The IN/OUTLIST/IN_OUTLIST/OUT/IN_OUT Keywords
+
+=head2 IN/OUTLIST/IN_OUTLIST/OUT/IN_OUT 关键字
 
 In the list of parameters for an XSUB, one can precede parameter names
 by the C<IN>/C<OUTLIST>/C<IN_OUTLIST>/C<OUT>/C<IN_OUT> keywords.
 C<IN> keyword is the default, the other keywords indicate how the Perl
 interface should differ from the C interface.
+
+在XSUB的参数列表中，可以在参数名称前添加C<IN>/C<OUTLIST>/C<IN_OUTLIST>/C<OUT>/C<IN_OUT>关键字。
+C<IN>关键字是默认设置的，其他关键字标识Perl接口和C接口的区别。
 
 Parameters preceded by C<OUTLIST>/C<IN_OUTLIST>/C<OUT>/C<IN_OUT>
 keywords are considered to be used by the C subroutine I<via
@@ -1207,8 +1215,13 @@ pointers>.  C<OUTLIST>/C<OUT> keywords indicate that the C subroutine
 does not inspect the memory pointed by this parameter, but will write
 through this pointer to provide additional return values.
 
+以C<OUTLIST>/C<IN_OUTLIST>/C<OUT>/C<IN_OUT>开头的参数被认为是通过指针被C子例程访问的。
+C<OUTLIST>/C<OUT>关键字表示C子例程不会查看参数指向的内存内容，但是会通过指针写入以传输额外的返回值。
+
 Parameters preceded by C<OUTLIST> keyword do not appear in the usage
 signature of the generated Perl function.
+
+以C<OUTLIST>关键字开头的参数不会出现在生成的Perl函数的使用签名中。
 
 Parameters preceded by C<IN_OUTLIST>/C<IN_OUT>/C<OUT> I<do> appear as
 parameters to the Perl function.  With the exception of
@@ -1217,6 +1230,10 @@ C type, then pointers to these data are given as arguments to the C
 function.  It is expected that the C function will write through these
 pointers.
 
+以C<IN_OUTLIST>/C<IN_OUT>/C<OUT>开头的参数的确会作为Perl函数的参数出现。
+除了C<OUT>参数外，这些参数都会被转为对应的C类型，然后这些数据的指针作为参数传给C函数，
+并期望C函数会向这些指针写入。
+
 The return list of the generated Perl function consists of the C return value
 from the function (unless the XSUB is of C<void> return type or
 C<The NO_OUTPUT Keyword> was used) followed by all the C<OUTLIST>
@@ -1224,7 +1241,14 @@ and C<IN_OUTLIST> parameters (in the order of appearance).  On the
 return from the XSUB the C<IN_OUT>/C<OUT> Perl parameter will be
 modified to have the values written by the C function.
 
+生成的Perl函数的返回列表包含了C函数的返回值
+（除非XSUB是C<oid>返回类型或使用了C<NO_OUTPUT关键字>）
+以及所有C<OUTLIST>和C<IN_OUTLIST>参数（按照出现的顺序排序）。
+当从XSUB返回时C<IN_OUT>/C<OUT>Perl参数会被改变为C函数写入的值。
+
 For example, an XSUB
+
+例如，XSUB
 
   void
   day_month(OUTLIST day, IN unix_time, OUTLIST month)
@@ -1234,19 +1258,28 @@ For example, an XSUB
 
 should be used from Perl as
 
+在Perl中应该这样调用：
+
   my ($day, $month) = day_month(time);
 
 The C signature of the corresponding function should be
+
+对应的C函数签名为：
 
   void day_month(int *day, int unix_time, int *month);
 
 The C<IN>/C<OUTLIST>/C<IN_OUTLIST>/C<IN_OUT>/C<OUT> keywords can be
 mixed with ANSI-style declarations, as in
 
+C<IN>/C<OUTLIST>/C<IN_OUTLIST>/C<IN_OUT>/C<OUT>关键字可以与ANSI风格的声明混合使用，
+比如：
+
   void
   day_month(OUTLIST int day, int unix_time, OUTLIST int month)
 
 (here the optional C<IN> keyword is omitted).
+
+（这里可选的C<IN>关键字被忽略了）。
 
 The C<IN_OUT> parameters are identical with parameters introduced with
 L<The & Unary Operator> and put into the C<OUTPUT:> section (see
