@@ -1288,15 +1288,24 @@ the only difference being that the value C function writes through the
 pointer would not modify the Perl parameter, but is put in the output
 list.
 
+C<IN_OUT>参数是和L<&一元操作符>引入并将其放入C<OUTPUT:>段的参数是一样的
+（参见L<OUTPUT: 关键字>一节）。C<IN_OUTPUT>参数与之非常类似，
+唯一的不同是C函数写入的值不会修改Perl参数，但是会从返回列表返回。
+
 The C<OUTLIST>/C<OUT> parameter differ from C<IN_OUTLIST>/C<IN_OUT>
 parameters only by the initial value of the Perl parameter not
 being read (and not being given to the C function - which gets some
 garbage instead).  For example, the same C function as above can be
 interfaced with as
 
+C<OUTLIST>/C<OUT>参数与C<IN_OUTLIST>/C<IN_OUT>参数的区别在于Perl参数的初始值不会被读取
+（也就不会被给予C函数 - 它得到的只是一些无意义的内容）。例如，和上面同样的C函数可以被定义成这样的接口：
+
   void day_month(OUT int day, int unix_time, OUT int month);
 
 or
+
+或者
 
   void
   day_month(day, unix_time, month)
@@ -1309,15 +1318,22 @@ or
 
 However, the generated Perl function is called in very C-ish style:
 
+然而，生成的Perl函数以一种非常C风格的方式调用：
+
   my ($day, $month);
   day_month($day, time, $month);
 
 =head2 The C<length(NAME)> Keyword
 
+=head2 C<length(NAME)> 关键字
+
 If one of the input arguments to the C function is the length of a string
 argument C<NAME>, one can substitute the name of the length-argument by
 C<length(NAME)> in the XSUB declaration.  This argument must be omitted when
 the generated Perl function is called.  E.g.,
+
+如果C函数的一个输入参数是一个字符串参数C<NAME>的长度，那么可以用C<length(NAME)>替代长度参数的名字。
+当调用生成的Perl函数时这个参数必须要被省略。
 
   void
   dump_chars(char *s, short l)
@@ -1335,9 +1351,15 @@ the generated Perl function is called.  E.g.,
 
 should be called as C<dump_chars($string)>.
 
+应该这样调用 C<dump_chars($string)>。
+
 This directive is supported with ANSI-type function declarations only.
 
+这个条目只支持ANSI类型的函数声明。
+
 =head2 Variable-length Parameter Lists
+
+=head2 变长参数列表
 
 XSUBs can have variable-length parameter lists by specifying an ellipsis
 C<(...)> in the parameter list.  This use of the ellipsis is similar to that
@@ -1346,16 +1368,26 @@ arguments passed to the XSUB by examining the C<items> variable which the
 B<xsubpp> compiler supplies for all XSUBs.  By using this mechanism one can
 create an XSUB which accepts a list of parameters of unknown length.
 
+XSUB可以通过在参数列表中添加一个省略号C<...>以实现变长参数列表。
+省略号的用法和ANSI C中的类似。程序员可以通过检查C<items>变量获取传给XSUB的参数个数，
+B<xsubpp>编译器会为所有的XSUB提供C<items>变量。通过使用这个机制，
+可以创建一个接收未知长度参数列表的XSUB。
+
 The I<host> parameter for the rpcb_gettime() XSUB can be
 optional so the ellipsis can be used to indicate that the
 XSUB will take a variable number of parameters.  Perl should
 be able to call this XSUB with either of the following statements.
+
+rpcb_gettime() XSUB的I<host>变量是可选的，这样省略号可以被用于表明XSUB会接收变长数量的参数。
+Perl应该可以以以下方式调用XSUB。
 
      $status = rpcb_gettime( $timep, $host );
 
      $status = rpcb_gettime( $timep );
 
 The XS code, with ellipsis, follows.
+
+带有省略号的XS代码如下：
 
      bool_t
      rpcb_gettime(timep, ...)
@@ -1372,12 +1404,19 @@ The XS code, with ellipsis, follows.
 
 =head2 The C_ARGS: Keyword
 
+=head2 C_ARGS: 关键字
+
 The C_ARGS: keyword allows creating of XSUBS which have different
 calling sequence from Perl than from C, without a need to write
 CODE: or PPCODE: section.  The contents of the C_ARGS: paragraph is
 put as the argument to the called C function without any change.
 
+C_ARGS: 关键字允许创建那种从Perl和从C中有着不同调用顺序的XSUB，而不许要写CODE: 或 PPCODE: 段。
+C_ARGS: 段的内容作为被调用的C函数的参数，不做任何变换。
+
 For example, suppose that a C function is declared as
+
+例如，一个C函数被声明为：
 
     symbolic nth_derivative(int n, symbolic function, int flags);
 
@@ -1385,9 +1424,13 @@ and that the default flags are kept in a global C variable
 C<default_flags>.  Suppose that you want to create an interface which
 is called as
 
+而且默认标志被保存在C全局变量C<default_flags>中。假如你像创建一个这样调用的接口：
+
     $second_deriv = $function->nth_derivative(2);
 
 To do this, declare the XSUB as
+
+为了实现这个，这样声明XSUB
 
     symbolic
     nth_derivative(function, n)
@@ -1398,6 +1441,8 @@ To do this, declare the XSUB as
 
 =head2 The PPCODE: Keyword
 
+=head2 PPCODE: 关键字
+
 The PPCODE: keyword is an alternate form of the CODE: keyword and is used
 to tell the B<xsubpp> compiler that the programmer is supplying the code to
 control the argument stack for the XSUBs return values.  Occasionally one
@@ -1405,6 +1450,12 @@ will want an XSUB to return a list of values rather than a single value.
 In these cases one must use PPCODE: and then explicitly push the list of
 values on the stack.  The PPCODE: and CODE:  keywords should not be used
 together within the same XSUB.
+
+PPCODE: 关键字是CODE: 关键字的另一种形式，
+被用于告诉B<xsubpp>编译器程序员会提供管理XSUB的返回值的参数栈的代码。
+有时候我们期望XSUB返回一个列表的值而不是单个值。
+在这些场景下必须要使用PPCODE: 并且显式得将列表值推到栈上。
+PPCODE: 和CODE: 关键字不应该被用在同一个XSUB中。
 
 The actual difference between PPCODE: and CODE: sections is in the
 initialization of C<SP> macro (which stands for the I<current> Perl
