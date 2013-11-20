@@ -1467,6 +1467,11 @@ beginning of the parameter list, which allows C<PUSH*()> macros
 to place output values in the place Perl expects them to be when
 the XSUB returns back to Perl.
 
+PPCODE: 和 CODE: 节实际上的不同在于C<SP>宏的初始化（代表当前Perl栈指针）以及当从XSUB返回时
+栈中数据的处理方式。在CODE: 节，SP保留了进入XSUB时的值：SP在函数指针上（跟着最后一个参数）。
+在PPCODE: 节，SP被移动到参数列表的开头，这样就允许C<PUSH*()>宏XSUB返回到Perl的时候将输出值放到
+Perl期望它们所在的位置。
+
 The generated trailer for a CODE: section ensures that the number of return
 values Perl will see is either 0 or 1 (depending on the C<void>ness of the
 return value of the C function, and heuristics mentioned in
@@ -1474,12 +1479,20 @@ L<"The RETVAL Variable">).  The trailer generated for a PPCODE: section
 is based on the number of return values and on the number of times
 C<SP> was updated by C<[X]PUSH*()> macros.
 
+CODE: 节生成的尾部保证了Perl可以看到的返回值不是0个就是1个（取决于C函数返回值是否为C<void>
+，以及在L<"RETVAL变量">）中提到的启发式算法。PPCODE: 节生成的尾部取决于返回值的数量以及
+C<SP>被用C<[XPUSH*()>宏作用的次数。
+
 Note that macros C<ST(i)>, C<XST_m*()> and C<XSRETURN*()> work equally
 well in CODE: sections and PPCODE: sections.
+
+注意宏C<ST(i)>, C<XST_m*()> 和 C<XSRETURN*()>在CODE: 节和PPCODE: 节中同样可以工作。
 
 The following XSUB will call the C rpcb_gettime() function
 and will return its two output values, timep and status, to
 Perl as a single list.
+
+以下XSUB将会调用rpcb_gettime()函数，并将其两个输出值返回，timep和status，对于Perl来说就是一个列表。
 
      void
      rpcb_gettime(host)
@@ -1497,10 +1510,15 @@ Notice that the programmer must supply the C code necessary
 to have the real rpcb_gettime() function called and to have
 the return values properly placed on the argument stack.
 
+注意到程序员必须提供C代码以调用rpcb_gettime(0函数，并将返回值放置到参数栈上。
+
 The C<void> return type for this function tells the B<xsubpp> compiler that
 the RETVAL variable is not needed or used and that it should not be created.
 In most scenarios the void return type should be used with the PPCODE:
 directive.
+
+这个函数的C<void>返回类型会告诉B<xsubpp>编译器不许要RETVAL变量，因此不用创建。
+在大多数场景下void返回类型应该与PPCODE: 条目一起使用。
 
 The EXTEND() macro is used to make room on the argument
 stack for 2 return values.  The PPCODE: directive causes the
@@ -1509,15 +1527,25 @@ is this pointer which is being used in the EXTEND() macro.
 The values are then pushed onto the stack with the PUSHs()
 macro.
 
+EXTEND()宏被用于为两个返回参数提供参数栈空间。PPCODE: 条目导致B<xsubpp>编译器创建一个
+可被C<SP>访问的栈指针，这个指针可以被EXTEND()宏使用。
+然后再通过PUSHs()宏将值压栈。
+
 Now the rpcb_gettime() function can be used from Perl with
 the following statement.
+
+现在rpcb_gettime()函数被Perl按以下方式调用：
 
      ($status, $timep) = rpcb_gettime("localhost");
 
 When handling output parameters with a PPCODE section, be sure to handle
 'set' magic properly.  See L<perlguts> for details about 'set' magic.
 
+当在PPCODE节中处理输出参数的时候，一定适当要处理'set'魔法。参见L<perlguts>以查看更多关于'set'魔法的细节。
+
 =head2 Returning Undef And Empty Lists
+
+=head2 返回 Undef和空列表
 
 Occasionally the programmer will want to return simply
 C<undef> or an empty list if a function fails rather than a
@@ -1527,6 +1555,10 @@ to have it return the time and if it fails we would like to
 have undef returned.  In the following Perl code the value
 of $timep will either be undef or it will be a valid time.
 
+有的时候当函数调用失败，程序员期望返回C<undef>或一个空列表而不是状态码。
+rpcb_gettime()正好提供了这种场景。如果函数成功，我们期望返回时间，如果失败，我们期望返回undef。
+在一下Perl代码$time的值要么是undef要么是一个合法时间。
+
      $timep = rpcb_gettime( "localhost" );
 
 The following XSUB uses the C<SV *> return type as a mnemonic only,
@@ -1534,6 +1566,11 @@ and uses a CODE: block to indicate to the compiler
 that the programmer has supplied all the necessary code.  The
 sv_newmortal() call will initialize the return value to undef, making that
 the default return value.
+
+以下XSUB只为了记忆方便使用C<SV *>返回类型，
+并使用CODE: 块向编译器表明程序员已经提供了所有必要的代码。
+sv_newmortal()调用将会将返回值初始化为undef，将其设为默认值。
+
 
      SV *
      rpcb_gettime(host)
@@ -1548,6 +1585,8 @@ the default return value.
 
 The next example demonstrates how one would place an explicit undef in the
 return value, should the need arise.
+
+下一个例子表明在特定条件下，如何显式的在返回值中放置一个undef值。
 
      SV *
      rpcb_gettime(host)
@@ -1566,6 +1605,8 @@ return value, should the need arise.
 
 To return an empty list one must use a PPCODE: block and
 then not push return values on the stack.
+
+返回一个空列表必须使用PPCODE: 块，并且不向栈上压值。
 
      void
      rpcb_gettime(host)
@@ -1586,8 +1627,14 @@ situations C<XSRETURN_EMPTY> should be used, instead.  This will ensure that
 the XSUB stack is properly adjusted.  Consult L<perlapi> for other
 C<XSRETURN> macros.
 
+一些人也许会倾向于在以上XSUB代码中显式包含一个C<return>，而不是将控制持续到最后。
+着这些场景中应当使用C<XSRETURN_EMPTY>代替。这将会确保XSUB栈适当地做适应。
+查询L<perlapi>以获取其他的C<XSRETURN>宏。
+
 Since C<XSRETURN_*> macros can be used with CODE blocks as well, one can
 rewrite this example as:
+
+由于C<XSRETURN_*>宏可以在CODE块中使用，你可以将这个例子重写为：
 
      int
      rpcb_gettime(host)
@@ -1604,6 +1651,8 @@ rewrite this example as:
 In fact, one can put this check into a POSTCALL: section as well.  Together
 with PREINIT: simplifications, this leads to:
 
+事实上，你可以将这个检查放到POSTCALL: 节中。和PREINIT: 简化在一起，就成了：
+
      int
      rpcb_gettime(host)
           char *host
@@ -1614,14 +1663,21 @@ with PREINIT: simplifications, this leads to:
 
 =head2 The REQUIRE: Keyword
 
+=head2 REQUIRE: 关键字
+
 The REQUIRE: keyword is used to indicate the minimum version of the
 B<xsubpp> compiler needed to compile the XS module.  An XS module which
 contains the following statement will compile with only B<xsubpp> version
 1.922 or greater:
 
+REQUIRE: 关键字被用于表明编译XS模块所需要的B<xsubpp>编译器的最小版本。
+一个包含了以下声明的XS模块需要使用1.992即以上版本的B<xsubpp>编译器：
+
 	REQUIRE: 1.922
 
 =head2 The CLEANUP: Keyword
+
+=head2 CLEANUP: 关键字
 
 This keyword can be used when an XSUB requires special cleanup procedures
 before it terminates.  When the CLEANUP:  keyword is used it must follow
@@ -1629,7 +1685,13 @@ any CODE:, PPCODE:, or OUTPUT: blocks which are present in the XSUB.  The
 code specified for the cleanup block will be added as the last statements
 in the XSUB.
 
+这个关键字在当XSUB在终止前需要特定清理过程的时候使用。当使用CLEANUP: 关键字的时候，
+它必须要跟着XSUB中的任何CODE:, PPCODE:, 或 OUTPUT: 块。
+清理块中的代码将会作为XSUB中最后的语句添加进去。
+
 =head2 The POSTCALL: Keyword
+
+=head2 POSTCALL: 关键字
 
 This keyword can be used when an XSUB requires special procedures
 executed after the C subroutine call is performed.  When the POSTCALL:
