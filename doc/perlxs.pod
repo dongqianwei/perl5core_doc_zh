@@ -1993,7 +1993,12 @@ say, from another XSUB.  (This example supposes that there was no
 INTERFACE_MACRO: section, otherwise one needs to use something else instead of
 C<XSINTERFACE_FUNC_SET>, see the next section.)
 
+也就是说，从另一个XSUB中。（这个例子假设没有INTERFACE_MACRO: 节，否则的话就需要做
+其他一些事情而不是C<XSINTERFACE_FUNC_SET>，请看下一节。）
+
 =head2 The INTERFACE_MACRO: Keyword
+
+=head2 INTERFACE_MACRO: 关键字
 
 This keyword allows one to define an INTERFACE using a different way
 to extract a function pointer from an XSUB.  The text which follows
@@ -2002,14 +2007,25 @@ function pointer.  The extractor macro is given return type, C<CV*>,
 and C<XSANY.any_dptr> for this C<CV*>.  The setter macro is given cv,
 and the function pointer.
 
+这个关键字允许用另一种方式定义一个INTERFACE以从XSUB中释放出一个函数指针。
+这个关键字后面跟的文本应该给出用于设置或释放函数指针的宏的名字。
+这个释放宏被指定了返回类型C<CV*>,和 这个 C<CV*>的C<XSANY.any_dptr>。
+设置宏被指定了cv以及函数指针。 
+
 The default value is C<XSINTERFACE_FUNC> and C<XSINTERFACE_FUNC_SET>.
 An INTERFACE keyword with an empty list of functions can be omitted if
 INTERFACE_MACRO keyword is used.
+
+默认值为C<XSINTERFACE_FUNC> 和 C<XSINTERFACE_FUNC_SET>。
+如果使用了INTERFACE_MACRO关键字的话，那么一个函数列表为空的INTERFACE关键字可以被省略掉。
 
 Suppose that in the previous example functions pointers for
 multiply(), divide(), add(), subtract() are kept in a global C array
 C<fp[]> with offsets being C<multiply_off>, C<divide_off>, C<add_off>,
 C<subtract_off>.  Then one can use
+
+加入在之前的例子中multiply(), divide(), add(), subtract()的函数指针位于一个全局C数组C<fp[]>中，
+偏移分别为：C<multiply_off>, C<divide_off>, C<add_off>, C<subtract_off>。那么可以用：
 
     #define XSINTERFACE_FUNC_BYOFFSET(ret,cv,f) \
 	((XSINTERFACE_CVT_ANON(ret))fp[CvXSUBANY(cv).any_i32])
@@ -2017,6 +2033,8 @@ C<subtract_off>.  Then one can use
 	CvXSUBANY(cv).any_i32 = CAT2( f, _off )
 
 in C section,
+
+在C的段中。
 
     symbolic
     interface_s_ss(arg1, arg2)
@@ -2031,13 +2049,22 @@ in C section,
 
 in XSUB section.
 
+在XSUB 的段中。
+
 =head2 The INCLUDE: Keyword
+
+=head2: INCLUDE: 关键字
 
 This keyword can be used to pull other files into the XS module.  The other
 files may have XS code.  INCLUDE: can also be used to run a command to
 generate the XS code to be pulled into the module.
 
+这个关键字用于将其他文件中的内容加到XS模块中。其他文件也许有XS代码。
+INCLUDE: 同样可以用于运行一个命令以生成需要添加到模块中的XS代码。
+
 The file F<Rpcb1.xsh> contains our C<rpcb_gettime()> function:
+
+文件F<Rpcb1.xsh>包含了我们的C<rpcb_gettime()>函数：
 
     bool_t
     rpcb_gettime(host,timep)
@@ -2048,6 +2075,8 @@ The file F<Rpcb1.xsh> contains our C<rpcb_gettime()> function:
 
 The XS module can use INCLUDE: to pull that file into it.
 
+XS模块可以使用INCLUDE: 将这个文件的内容添加进来。
+
     INCLUDE: Rpcb1.xsh
 
 If the parameters to the INCLUDE: keyword are followed by a pipe (C<|>) then
@@ -2055,17 +2084,28 @@ the compiler will interpret the parameters as a command. This feature is
 mildly deprecated in favour of the C<INCLUDE_COMMAND:> directive, as documented
 below.
 
+如果INCLUDE: 关键字跟着一个管道符（C<|>）那么编译器将会将参数解释为命令。这个特性差不多被
+废除了，因为现在有C<INCLUDE_COMMAND:>条目了，如下所述。
+
     INCLUDE: cat Rpcb1.xsh |
 
 Do not use this to run perl: C<INCLUDE: perl |> will run the perl that
 happens to be the first in your path and not necessarily the same perl that is
 used to run C<xsubpp>. See L<"The INCLUDE_COMMAND: Keyword">.
 
+如果不使用这个来运行perl: C<INCLUDE: perl |>将会运行搜索路径下的第一个perl，并且不一定是
+运行C<xsubpp>的perl。参见 L<"INCLUDE_COMMAND: 关键字">。
+
 =head2 The INCLUDE_COMMAND: Keyword
+
+=head2 INCLUDE_COMMAND: 关键字
 
 Runs the supplied command and includes its output into the current XS
 document. C<INCLUDE_COMMAND> assigns special meaning to the C<$^X> token
 in that it runs the same perl interpreter that is running C<xsubpp>:
+
+运行提供的命令，并将输出包含到当前的XS文档中。C<INCLUDE_COMMAND>给予C<$^X>符号特殊的意义：
+运行当前的C<xsubpp>的同样的perl解释器。
 
     INCLUDE_COMMAND: cat Rpcb1.xsh
 
@@ -2073,11 +2113,17 @@ in that it runs the same perl interpreter that is running C<xsubpp>:
 
 =head2 The CASE: Keyword
 
+=head2 CASE: 关键字
+
 The CASE: keyword allows an XSUB to have multiple distinct parts with each
 part acting as a virtual XSUB.  CASE: is greedy and if it is used then all
 other XS keywords must be contained within a CASE:.  This means nothing may
 precede the first CASE: in the XSUB and anything following the last CASE: is
 included in that case.
+
+CASE: 关键字允许XSUB有对个分支部分，每个部分像是一个虚XSUB。
+CASE: 是贪心的，如果它被使用了那么其他所有的XS关键字都必须包含在一个CASE: 中。
+这意味着没有什么能在第一个CASE: 之前。在XSUB中任何在最后一个CASE: 之后的内容都在那个case中。
 
 A CASE: might switch via a parameter of the XSUB, via the C<ix> ALIAS:
 variable (see L<"The ALIAS: Keyword">), or maybe via the C<items> variable
@@ -2088,6 +2134,12 @@ having an alias C<x_gettime()>.  When the function is called as
 C<rpcb_gettime()> its parameters are the usual C<(char *host, time_t *timep)>,
 but when the function is called as C<x_gettime()> its parameters are
 reversed, C<(time_t *timep, char *host)>.
+
+CASE: 通过XSUB的参数，或者C<ix> ALIAS: 变量<参见 L<"ALIAS: 关键字">>，或者通过C<items>变量
+（参见L<"变长参数列表">）来确定使用的分支。最后一个CASE: 如果没有关联条件的话就成为了默认场景。
+以下例子展示了CASE 根据函数C<rpcb_gettime()>和它的匿名函数<x_gettime()>的C<ix>变量进行分支。
+当函数作为C<rpcb_gettime()>被调用，它的参数是通常的C<(char *host, time_t *timep)>，
+但是当函数被C<x_gettime()>调用时，它的参数是反过来的，C<(time_t *timep, char *host)>。
 
     long
     rpcb_gettime(a,b)
@@ -2114,21 +2166,32 @@ reversed, C<(time_t *timep, char *host)>.
 That function can be called with either of the following statements.  Note
 the different argument lists.
 
+那个函数可以通过下面任意一种方式调用。注意不同的参数列表。
+
 	$status = rpcb_gettime( $host, $timep );
 
 	$status = x_gettime( $timep, $host );
 
 =head2 The EXPORT_XSUB_SYMBOLS: Keyword
 
+=head2 EXPORT_XSUB_SYMBOLS: 关键字
+
 The EXPORT_XSUB_SYMBOLS: keyword is likely something you will never need.
 In perl versions earlier than 5.16.0, this keyword does nothing. Starting
 with 5.16, XSUB symbols are no longer exported by default. That is, they
 are C<static> functions. If you include
 
+EXPORT_XSUB_SYMBOLS: 关键字你差不多永远都不会用到。
+在perl 5.16.0以前的版本中，这个关键字什么都不做。从5.16开始，XSUB的符号不再是默认导出的了。
+也就是说，它们是静态函数。如果你包含了
+
   EXPORT_XSUB_SYMBOLS: ENABLE
 
 in your XS code, the XSUBs following this line will not be declared C<static>.
 You can later disable this with
+
+在你的XS代码中，在这一行以后的XSUB不再被声明为C<static>。
+你可以在后面再将它关闭：
 
   EXPORT_XSUB_SYMBOLS: DISABLE
 
@@ -2136,20 +2199,35 @@ which, again, is the default that you should probably never change.
 You cannot use this keyword on versions of perl before 5.16 to make
 XSUBs C<static>.
 
+这样，也就是默认的情况，你最好不要改变它。
+在5.16以前的版本你无法通过这个关键字将XSUB变为C<static>。
+
 =head2 The & Unary Operator
+
+=head2 &一元操作符
 
 The C<&> unary operator in the INPUT: section is used to tell B<xsubpp>
 that it should convert a Perl value to/from C using the C type to the left
 of C<&>, but provide a pointer to this value when the C function is called.
 
+C<&> 一元操作副在INPUT: 段中是告诉B<xsubpp>，它应该将一个Perl的转到C或从C转入为C<&>左边的C
+类型，但是当C函数被调用的时候提供了一个指向这个值的指针。
+
+
 This is useful to avoid a CODE: block for a C function which takes a parameter
 by reference.  Typically, the parameter should be not a pointer type (an
 C<int> or C<long> but not an C<int*> or C<long*>).
+
+这个对于通过引用传一个参数的C函数来说可以用于避免使用CODE: 块。
 
 The following XSUB will generate incorrect C code.  The B<xsubpp> compiler will
 turn this into code which calls C<rpcb_gettime()> with parameters C<(char
 *host, time_t timep)>, but the real C<rpcb_gettime()> wants the C<timep>
 parameter to be of type C<time_t*> rather than C<time_t>.
+
+以下XSUB会生成错误的C代码。B<xsubpp>编译器将会将其转为使用C<(char
+*host, time_t timep)>参数来调用C<rpcb_gettime()>的代码，但是C<rpcb_gettime()>
+的参数C<timep>实际上希望的是C<time_t*>而不是C<time_t>
 
     bool_t
     rpcb_gettime(host,timep)
@@ -2163,6 +2241,9 @@ will now turn this into code which calls C<rpcb_gettime()> correctly with
 parameters C<(char *host, time_t *timep)>.  It does this by carrying the
 C<&> through, so the function call looks like C<rpcb_gettime(host, &timep)>.
 
+这个问题可以通过C<&>操作符修正。B<xsubpp>编译器将会将其转为正确地使用C<(char *host, time_t *timep)>
+参数调用C<rpcb_gettime()>的代码。它通过携带C<&>做到这样，因此函数调用看起来像C<rpcb_gettime(host, &timep)>。
+
     bool_t
     rpcb_gettime(host,timep)
           char *host
@@ -2171,6 +2252,8 @@ C<&> through, so the function call looks like C<rpcb_gettime(host, &timep)>.
           timep
 
 =head2 Inserting POD, Comments and C Preprocessor Directives
+
+=head2 插入POD，注释和C预处理指令
 
 C preprocessor directives are allowed within BOOT:, PREINIT: INIT:, CODE:,
 PPCODE:, POSTCALL:, and CLEANUP: blocks, as well as outside the functions.
