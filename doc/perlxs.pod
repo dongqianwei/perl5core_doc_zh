@@ -2267,20 +2267,34 @@ result in whitespace in front of any line starting with C<=>. Machine
 generated XS files may fall into this trap unless care is taken to
 ensure that a space breaks the sequence "\n=".
 
+在BOOT: ，PREINIT: ,INIT: ,CODE: ,PPCODE: ,POSTCALL: ,和CLEANUP: 块中
+和在函数外一样可以使用C预处理指令。在MODULE关键字之后可以使用注释。
+编译器将会不会处理预处理指令，并且将注释行移除。POD文档允许存在任何地方，包括C和XS语言的段。
+POD必须以C<=cut>结尾；如果你不这样做的话C<xsubpp>将会错误退出。
+人写的代码不太可能被误认为是POD，因为大部分缩进形式都是在以C<=>开头的行前的空格。
+机器生成的XS文件可能会陷入陷阱，除非保证用空格打断"\n="序列。
+
 Comments can be added to XSUBs by placing a C<#> as the first
 non-whitespace of a line.  Care should be taken to avoid making the
 comment look like a C preprocessor directive, lest it be interpreted as
 such.  The simplest way to prevent this is to put whitespace in front of
 the C<#>.
 
+可以通过在一行的第一个非空白字符放置C<#>来为XSUB添加注释。
+注意要避免看起来像C预处理指令的注释。最简单的避免方式是在C<#>前添加空格。
+
 If you use preprocessor directives to choose one of two
 versions of a function, use
+
+如果你使用预处理指令选择一个函数的版本，使用
 
     #if ... version1
     #else /* ... version2  */
     #endif
 
 and not
+
+而不是
 
     #if ... version1
     #endif
@@ -2291,7 +2305,12 @@ because otherwise B<xsubpp> will believe that you made a duplicate
 definition of the function.  Also, put a blank line before the
 #else/#endif so it will not be seen as part of the function body.
 
+因为否则的话B<xsubpp>将会认为你重复定义了一个函数。另外，在#else/#endif前放一空行，
+这样它才不会被认为是函数体的一部分。
+
 =head2 Using XS With C++
+
+=head2 XS和C++联合使用
 
 If an XSUB name contains C<::>, it is considered to be a C++ method.
 The generated Perl function will assume that
@@ -2400,6 +2419,8 @@ example.
 
 =head2 Interface Strategy
 
+=head2 接口策略
+
 When designing an interface between Perl and a C library a straight
 translation from C to XS (such as created by C<h2xs -x>) is often sufficient.
 However, sometimes the interface will look
@@ -2409,8 +2430,15 @@ return values mean failure").  In cases where the programmer wishes to
 create a more Perl-like interface the following strategy may help to
 identify the more critical parts of the interface.
 
+当设计一个Perl与C库之间的接口的时候，将C直接转换为XS（就像C<h2xs -x>创建的那样）
+通常是非常高效的。然而，这样生成的接口往往看上去有明显的C风格从而不够直观，
+尤其是当C函数修改它的一个参数的时候，或者返回失败（比如“返回负数表示失败”）。
+如果程序员希望能创建更加Perl风格的接口时，一下策略对于制定接口的原则会有帮助。
+
 Identify the C functions with input/output or output parameters.  The XSUBs for
 these functions may be able to return lists to Perl.
+
+对于有输入/输出 或 输出参数的C函数。XSUB应该返回列表给Perl。
 
 Identify the C functions which use some inband info as an indication
 of failure.  They may be
@@ -2420,8 +2448,16 @@ an INIT: section to report the failure.  For failures detectable after the C
 function returns one may want to use a POSTCALL: section to process the
 failure.  In more complicated cases use CODE: or PPCODE: sections.
 
+对于使用返回值标识失败的C函数。应该在失败时返回undef或空列表。
+如果在调用C函数前就可以检查出失败，你也许想用INIT: 节来报告失败。
+对于在C函数调用完成后才检查出来的错误你也许想用POSTCALL: 节处理。
+在更加复杂的例子中用CODE: 或 PPCODE: 节。
+
 If many functions use the same failure indication based on the return value,
 you may want to create a special typedef to handle this situation.  Put
+
+很多函数根据返回值返回同样的失败，你可以创建一个特殊的typedef来处理这种场景。
+将
 
   typedef int negative_is_failure;
 
@@ -2429,6 +2465,9 @@ near the beginning of XS file, and create an OUTPUT typemap entry
 for C<negative_is_failure> which converts negative values to C<undef>, or
 maybe croak()s.  After this the return value of type C<negative_is_failure>
 will create more Perl-like interface.
+
+放置到XS文件的开头，然后为C<negative_is_failure>创建一个OUTPUT typemap条目以将负数转为C<undef>，
+或者croak()之类的。在这之后C<negative_is_failure>类型的返回值将会创建更加Perl风格的接口。
 
 Identify which values are used by only the C and XSUB functions
 themselves, say, when a parameter to a function should be a contents of a
