@@ -2475,6 +2475,9 @@ global variable.  If Perl does not need to access the contents of the value
 then it may not be necessary to provide a translation for that value
 from C to Perl.
 
+对于那些只被C和XSUB函数使用的值，比如，函数的参数是某个全局变量。
+如果Perl不需要访问这些值，那么就没有必要提供将这些值从C转为Perl的转换。
+
 Identify the pointers in the C function parameter lists and return
 values.  Some pointers may be used to implement input/output or
 output parameters, they can be handled in XS with the C<&> unary operator,
@@ -2484,17 +2487,30 @@ to decide what a useful Perl translation will do in such a case.  When
 the semantic is clear, it is advisable to put the translation into a typemap
 file.
 
+对于C函数参数列表或返回值中有指针的。一些指针可能被用于输入输出参数，
+它们可以在XS中通过C<&>操作符处理，而且可能会使用NO_INIT关键字。
+一些场景下需要处理类似于C<int *>之类的类型，你需要确定怎么做与Perl类型的转化。
+当语义明确的时候，最好将转换代码放到typemap文件中。
+
 Identify the structures used by the C functions.  In many
 cases it may be helpful to use the T_PTROBJ typemap for
 these structures so they can be manipulated by Perl as
 blessed objects.  (This is handled automatically by C<h2xs -x>.)
+
+在C函数使用结构体的场景下。很多时候可以将T_PTROBJ typemap用于这些结构体，
+这样它们就可以被Perl以blessed对象管理了。（这个是被C<h2xs -x>自动处理的）
 
 If the same C type is used in several different contexts which require
 different translations, C<typedef> several new types mapped to this C type,
 and create separate F<typemap> entries for these new types.  Use these
 types in declarations of return type and parameters to XSUBs.
 
+当同样的C类型在不同的上下文中使用需要不同的转换方式时，C<typedef>多个新的类型映射到C类型上，
+然后为它们创建不同的F<typemap>条目。使用在声明XSUB的返回值和参数的时候用这些类型。
+
 =head2 Perl Objects And C Structures
+
+=head2 Perl 对象和C结构体
 
 When dealing with C structures one should select either
 B<T_PTROBJ> or B<T_PTRREF> for the XS type.  Both types are
@@ -2504,6 +2520,11 @@ while the T_PTROBJ type requires that the object be blessed.
 By using T_PTROBJ one can achieve a form of type-checking
 because the XSUB will attempt to verify that the Perl object
 is of the expected type.
+
+当处理C结构体的时候，你应当为XS类型选择B<T_PTROBJ>或B<T_PTRREF>。
+这些类型被设计用于处理指向复杂对象的指针。T_PTRREF 类型允许Perl对象是unblessed的而T_PTROBJ类型
+需要对象是blessed的。通过使用T_PTROBJ你可以实现某种形式的类型检查，因为XSUB将会检验Perl对象
+是否是所期待的类型。
 
 The following XS code shows the getnetconfigent() function which is used
 with ONC+ TIRPC.  The getnetconfigent() function will return a pointer to a
@@ -2516,6 +2537,12 @@ Destructors in XS can be created by specifying an XSUB function whose name
 ends with the word B<DESTROY>.  XS destructors can be used to free memory
 which may have been malloc'd by another XSUB.
 
+以下XS代码展示了用于ONC+ TRIPC的getnetconfigent()函数。该函数会返回一个指向C结构体的指针，
+其C原型如下。这个例子将会展示C指针是如何变成Perl引用的。Perl将会把这个引用认为是指向一个blessed
+的对象的指针并且试图调用对象的析构函数。XS源码将提供析构函数以释放getnetconfigent()使用的内存。
+XS中的析构函数可以通过创建一个以B<DESTROY>结尾的XSUB函数来实现。XS析构可以用来释放可能是
+另一个XSUB申请的内存。
+
      struct netconfig *getnetconfigent(const char *netid);
 
 A C<typedef> will be created for C<struct netconfig>.  The Perl
@@ -2525,6 +2552,10 @@ have embedded spaces if it will be a Perl package name.  The
 destructor will be placed in a class corresponding to the
 class of the object and the PREFIX keyword will be used to
 trim the name to the word DESTROY as Perl will expect.
+
+将会为C<struct_netconfig>创建一个C<typedef>。Perl对象将会被blessed到一个匹配C类型名称的class上，
+外带添加一个C<Ptr>标签，名字如果是一个Perl包名的话，则中间不应该有空格。
+析构器将会被放置到对象对应的类中，而且PREFIX关键字将被用于修饰DESTROY，正如Perl所期望的。
 
      typedef struct netconfig Netconfig;
 
@@ -2547,10 +2578,14 @@ This example requires the following typemap entry.  Consult
 L<perlxstypemap> for more information about adding new typemaps
 for an extension.
 
+这个例子需要以下typemap条目。参考L<perlxstypemap>以获得更多关于添加新的typemap拓展的信息。
+
      TYPEMAP
      Netconfig *  T_PTROBJ
 
 This example will be used with the following Perl statements.
+
+这个例子将被用于以下Perl语句。
 
      use RPC;
      $netconf = getnetconfigent("udp");
@@ -2561,22 +2596,38 @@ does not care, that this object is a C struct and not a Perl object.  In
 this sense, there is no difference between the object created by the
 getnetconfigent() XSUB and an object created by a normal Perl subroutine.
 
+当Perl销毁$netconf引用的对象时，它将会把这个对象发送给提供的XSUB DESTROY函数。
+Perl无法决定，也不在乎这个对象是C结构体而不是Perl对象。
+因此，getnetconfigent() XSUB函数创建的对象和普通Perl子例程创建的对象没有什么区别。
+
 =head2 Safely Storing Static Data in XS
+
+=head2 在XS中安全地储存静态数据
 
 Starting with Perl 5.8, a macro framework has been defined to allow
 static data to be safely stored in XS modules that will be accessed from
 a multi-threaded Perl.
 
+从5.8开始，定义了一个宏框架以允许静态数据被安全地存在XS模块中以被多线程的Perl访问。
+
 Although primarily designed for use with multi-threaded Perl, the macros
 have been designed so that they will work with non-threaded Perl as well.
+
+尽管主要是为了给多线程的Perl使用，这些宏还是被设计可以在不支持线程的Perl中使用。
 
 It is therefore strongly recommended that these macros be used by all
 XS modules that make use of static data.
 
+因此强烈推荐当XS模块需要静态数据的时候使用这些宏。
+
 The easiest way to get a template set of macros to use is by specifying
 the C<-g> (C<--global>) option with h2xs (see L<h2xs>).
 
+最简单获取一个可用宏的模板集合的方法是使用h2xs的C<-g> （C<--global>）选项（参见L<h2xs>）。
+
 Below is an example module that makes use of the macros.
+
+以下是一个使用这些宏的例子模块。
 
     #include "EXTERN.h"
     #include "perl.h"
